@@ -47,11 +47,16 @@ class PrompInput(Input):
 
         #check if the user input was command or prompt
         if user_prompt.startswith("/"):
+
+            if user_prompt == "/exit":
+                self.app.exit()
+                return
+
             command_output = self.handle_command(user_prompt)
-            if command_output:
-                chat_text_box.add_message(command_output, Role.SYSTEM)
+            if command_output.startswith("Error"):
+                chat_text_box.add_error_message(command_output)
             else:
-                chat_text_box.add_error_message("Invalid command")
+                chat_text_box.add_message(command_output, Role.SYSTEM)
 
         else:
             # call the llm for the generation
@@ -63,25 +68,37 @@ class PrompInput(Input):
             self.fetch_ai_response(user_prompt, chat_text_box, ai_message_widget)
 
     def handle_command(self, user_input: str) -> str:
-        match user_input:
-            case "/exit":
-                self.app.exit()
-                return ""
-            
+        parts = user_input.split(maxsplit=1)
+
+        command = parts[0]
+
+        arg = parts[1].strip() if len(parts) > 1 else None
+
+        match command:            
             case "/add-resource":
-                return ""
+                if not arg:
+                    return "Error: No filename provided"
+                
+                db.add_resource(arg)
+                return "Resource added succesfully!"
             
             case "/remove-resource":
-                return ""
+                if not arg:
+                    return "Error: No filename provided"
+                
+                if (db.remove_resource(arg)):
+                    return "Resource deleted succesfully!"
+                else:
+                    return "Error: Deleting resource failed"
 
             case "/list-resources":
                 return ", ".join(db.list_all_uploaded_files())
 
             case "/history":
-                return ""
+                return "Error: histroy not implemented yet"
 
             case _:
-                return ""
+                return "Error: Invalid command"
 
     @work(thread=True)
     def fetch_ai_response(self, user_prompt: str, chat_text_box: ChatText, message_widget: ChatMessage) -> None:
@@ -129,7 +146,7 @@ class ErrorMessage(Horizontal):
         self.message = message
     
     def compose(self) -> ComposeResult:
-        formatted_text = f"Error: {self.message}"
+        formatted_text = self.message
         yield Static(formatted_text, classes="message-bubble")
 
 
