@@ -1,3 +1,10 @@
+#welcome-art{
+    content-align: center middle;
+    text-align: center;
+    margin: 1 0;
+    color: $primary;
+}
+
 #chat-text {
     height: 1fr;
     padding: 1 2;

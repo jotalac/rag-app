@@ -59,11 +59,14 @@ def generate_message(user_prompt: str):
             "chat_history": chat_history,
             "input": user_prompt
         })
+    
+    yield f"`Message for the docs: {question_for_docs}`\n"
 
     docs = db.retriever.invoke(question_for_docs)
     context_string = format_docs(docs)
 
     # later there will be some setting to check if the user want to generate messages even when nothing was found in the rag
+    yield f"`Context string: {context_string}`\n"
     if not context_string:
         # context_string = """
         # No data was found with the RAG, nothing in the saved documents,

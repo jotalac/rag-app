@@ -168,7 +168,7 @@ class RagApp(App):
 
         yield PrompInput()
 
-        yield Footer()
+        yield Footer(show_command_palette=False)
 
     def action_toggle_dark(self) -> None:
         self.theme = (
@@ -181,6 +181,22 @@ class RagApp(App):
 
     def action_unfocus_input(self) -> None:
         self.set_focus(None)
+
+    def on_mount(self):
+        self.add_welcome_text()
+
+    def add_welcome_text(self) -> None:
+        try:
+            with open('resources/welcome.txt', 'r', encoding='utf-8') as f:
+                welcome_text = f.read()
+
+            welcome_label = Static(welcome_text, id="welcome-art")
+
+            self.query_one(ChatText).mount(welcome_label)
+        
+        except FileNotFoundError:
+            error_label = Static("Welcome! (error loading welcome art)")
+            self.query_one(ChatText).mount(error_label)
 
 
 if __name__ == "__main__":
