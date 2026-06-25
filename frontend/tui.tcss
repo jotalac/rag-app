@@ -1,0 +1,42 @@
+#chat-text {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#chat-input {
+    dock: bottom;
+    margin-bottom: 2;
+}
+
+.message-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.message-row.user{
+    align: right middle;
+}
+
+.message-row.ai{
+    align: left middle;
+}
+
+.message-bubble {
+    width: auto;
+    max-width: 75%;
+    padding: 1 2;
+    border: solid $primary;
+    background: $surface;
+}
+
+.message-row.user .message-bubble {
+    background: transparent;
+    border: transparent;
+}
+
+.message-row.error .message-bubble {
+    background: $error 20%;
+    color: $error;
+    border: solid $error
+}
