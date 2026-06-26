@@ -1,5 +1,5 @@
-import src.rag_app.backend.db as db
-import src.rag_app.backend.rag as rag
+import rag_app.backend.db as db
+import rag_app.backend.rag as rag
 from langchain_core.messages import HumanMessage, AIMessage
 import logging
 

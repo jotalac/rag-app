@@ -1,4 +1,4 @@
-from src.rag_app.backend import db
+from rag_app.backend import db
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 from langchain_google_genai import ChatGoogleGenerativeAI

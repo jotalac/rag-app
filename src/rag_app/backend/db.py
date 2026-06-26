@@ -8,12 +8,14 @@ from langchain_core.indexing import index
 from sqlalchemy import create_engine, text
 import os
 from typing import Final
+from pathlib import Path
 
 DB_CONNECTION_STRING: Final = (
     "postgresql+psycopg://myuser:mypassword@localhost:5432/vectordb"
 )
-FILES_BASE_DIR: Final = "../documents"
 COLLECTION_NAME: Final = "test_collection"
+
+DOCUMENT_BASE_DIR = Path(__file__).parent.parent.parent.parent / "documents"
 
 # init local ollama model
 embeddings_model: Final = OllamaEmbeddings(model="nomic-embed-text")
@@ -48,7 +50,9 @@ db_connection = engine.connect()
 
 
 def add_resource(filename: str) -> bool:
-    file_path = os.path.join(FILES_BASE_DIR, filename)
+    file_path = DOCUMENT_BASE_DIR / filename
+
+    print("File path is: " + str(file_path))
 
     # check if the file exists
     if not os.path.exists(file_path):
@@ -90,9 +94,9 @@ def add_resource(filename: str) -> bool:
 
 
 def remove_resource(filename: str) -> bool:
-    file_path = os.path.join(FILES_BASE_DIR, filename)
+    file_path = DOCUMENT_BASE_DIR / filename
 
-    keys_to_delete = record_manager.list_keys(group_ids=[file_path])
+    keys_to_delete = record_manager.list_keys(group_ids=[str(file_path)])
 
     if not keys_to_delete:
         print(f"Not records found to delete, for file {filename}")

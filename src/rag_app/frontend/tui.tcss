@@ -45,5 +45,17 @@
 .message-row.error .message-bubble {
     background: $error 20%;
     color: $error;
-    border: solid $error
+    border: solid $error;
+}
+
+.message-row.info .message-bubble {
+    background: $secondary 20%;
+    color: $secondary;
+    border: solid $secondary;
+}
+
+.message-row.success .message-bubble {
+    background: $success 20%;
+    color: $success;
+    border: solid $success;
 }
