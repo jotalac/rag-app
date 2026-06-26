@@ -48,7 +48,7 @@ class SystemMessage(Horizontal):
         self.message_type = message_type
 
     def compose(self) -> ComposeResult:
-        formatted_text = f"[b]{self.message_type.value}[/b]: {self.message}"
+        formatted_text = f"[b]{self.message_type.value}[/b]:\n\n{self.message}"
         yield Static(formatted_text, classes="message-bubble")
 
 

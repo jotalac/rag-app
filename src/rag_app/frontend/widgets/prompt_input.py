@@ -1,8 +1,5 @@
 from textual.widgets import Input
 from textual.suggester import SuggestFromList
-import rag_app.backend.db as db
-from rag_app.backend.rag import generate_message, clear_chat_history
-from enum import Enum
 from textual.message import Message
 from rag_app.frontend.command_handler import Commands
 
@@ -38,7 +35,5 @@ class PromptInput(Input):
 
         if not user_prompt:
             return
-
-        self.value = ""
 
         self.post_message(self.PromptSubmitted(user_prompt))

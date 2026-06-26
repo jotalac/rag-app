@@ -1,28 +1,33 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Static
+from textual.widgets import Footer, Static, LoadingIndicator
 from rag_app.frontend.widgets.prompt_input import PromptInput
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from pathlib import Path
-from rag_app.frontend.command_handler import CommandHandler, Commands
+from rag_app.frontend.command_handler import Commands, handle_command
 from textual import work
+from textual.worker import Worker, get_current_worker
 from rag_app.backend.rag import generate_message
 from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
+from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 
 
 class RagApp(App):
 
-    CSS_PATH = "frontend/tui.tcss"
+    CSS_PATH = "frontend/styles.tcss"
 
     BINDINGS = [
         ("d", "toggle_dark", "Toggle dark mode"),
         ("/", "focus_input", "Focus input"),
         ("escape", "unfocus_input", "Unfocus input"),
-        ("ctrl+l", "clear_text", "Clear chat"),
+        ("ctrl+l", "clear_chat", "Clear chat"),
+        ("ctrl+c", "cancel_ai_generation", "Cancel AI generation"),
     ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.is_generating = False
+        self.is_working = False
+        self.active_worker: Worker | None = None
+        self.active_ai_widget: AIMessage | None = None
 
     def compose(self) -> ComposeResult:
         # yield Header()
@@ -45,11 +50,34 @@ class RagApp(App):
     def action_unfocus_input(self) -> None:
         self.set_focus(None)
 
-    def action_clear_chat(self) -> None:
-        pass
+    def action_cancel_ai_generation(self) -> None:
+        if (
+            self.is_working
+            and self.active_worker
+            and not self.active_worker.is_finished
+        ):
+            self.active_worker.cancel()
+            self.is_working = False
+
+            if self.active_ai_widget:
+                self.active_ai_widget.update_text(
+                    self.active_ai_widget.message + "\n\n" + "[Generation canceled]"
+                )
+                self.active_ai_widget = None
+
+    async def action_clear_chat(self) -> None:
+        print(self.is_working)
+        if self.is_working:
+            self.notify("Wait for the job to finish")
+            return
+
+        chat_text_box = self.query_one(ChatText)
+        await chat_text_box.remove_children()
+        self.add_welcome_text()
 
     def on_mount(self):
         self.add_welcome_text()
+        self.action_focus_input()
 
     def add_welcome_text(self) -> None:
         current_dir = Path(__file__).parent
@@ -71,8 +99,11 @@ class RagApp(App):
     def on_prompt_input_prompt_submitted(
         self, event: PromptInput.PromptSubmitted
     ) -> None:
-        if self.is_generating:
+        if self.is_working:
             return
+
+        # reset the input
+        self.query_one(PromptInput).value = ""
 
         user_prompt = event.text
         chat_text_box = self.query_one(ChatText)
@@ -84,32 +115,67 @@ class RagApp(App):
                 self.exit()
                 return
 
-            status, message = CommandHandler.handle_command(user_prompt)
-            chat_text_box.add_system_message(message=message, message_type=status)
+            self.is_working = True
+
+            self.run_thread_command(user_prompt, chat_text_box)
+            # chat_text_box.add_system_message(message=message, message_type=status)
 
         else:
-            ai_message_widget = AIMessage("")
+            ai_message_widget = AIMessage("Generating response...")
             chat_text_box.mount(ai_message_widget)
             chat_text_box.scroll_end(animate=False)
 
-            self.is_generating = True
+            self.is_working = True
+            self.active_ai_widget = ai_message_widget
 
-            self.fetch_ai_response(user_prompt, chat_text_box, ai_message_widget)
+            self.active_worker = self.fetch_ai_response(
+                user_prompt, chat_text_box, ai_message_widget
+            )
 
     @work(thread=True)
     def fetch_ai_response(
         self, user_prompt: str, chat_text_box: ChatText, message_widget: AIMessage
     ) -> None:
+        worker = get_current_worker()
         acc_response = ""
 
         # display the text as it is being generated
         for chunk in generate_message(user_prompt):
+            # check if the generation wasn't canceled
+            if worker.is_cancelled:
+                break
+
+            # append the new generated chunk
             acc_response += chunk
             self.app.call_from_thread(message_widget.update_text, acc_response)
 
             self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
 
-        self.is_generating = False
+        if not worker.is_cancelled:
+            self.is_working = False
+
+    @work(thread=True)
+    def run_thread_command(self, user_prompt: str, chat_text_box: ChatText) -> None:
+
+        loader = CustomSpinner(message="Processing request", id="cmd-loader")
+
+        def mount_loader():
+            chat_text_box.mount(loader)
+            chat_text_box.scroll_end(animate=False)
+
+        self.app.call_from_thread(mount_loader)
+
+        status, message = handle_command(user_prompt)
+
+        def update_ui():
+            chat_text_box.query_one("#cmd-loader").remove()
+
+            # Post the real result
+            chat_text_box.add_system_message(message=message, message_type=status)
+            chat_text_box.scroll_end(animate=False)
+
+        self.app.call_from_thread(update_ui)
+        self.is_working = False
 
 
 def run_cli():

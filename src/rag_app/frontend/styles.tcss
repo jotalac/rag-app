@@ -59,3 +59,14 @@
     color: $success;
     border: solid $success;
 }
+
+#cmd-loader {
+    height: 3;
+    margin: 1 2;
+}
+
+AsciiSpinner {
+    height: 1;
+    margin: 1 2;
+    color: $text-muted;
+}
