@@ -103,7 +103,10 @@ class RagApp(App):
             return
 
         # reset the input
-        self.query_one(PromptInput).value = ""
+        promptInput = self.query_one(PromptInput)
+        promptInput.value = ""
+        promptInput.command_history.append(event.text)
+        promptInput.history_index = len(promptInput.command_history)
 
         user_prompt = event.text
         chat_text_box = self.query_one(ChatText)
