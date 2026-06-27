@@ -13,24 +13,42 @@ _llm = ChatOllama(model="llama3.2:3b", temperature=0)
 #     api_key="AIzaSyBNh3oQYeMzrwcpkERsXY9pWXgYyQv8dUI",
 # )
 
+# adding history context to the llm
 _chat_history: list[HumanMessage | AIMessage] = []
+MAX_HISTORY_LENGTH = 5
 
-_contextualize_q_system_prompt = """You are a rigid, robotic question rewriter. Your ONLY job is to look at the chat history and the user's latest question.
-If the latest question contains pronouns (it, they, he, she) or refers to a previous topic, rewrite it into a standalone question.
-If the question already makes sense on its own, return the exact original question.
+_contextualize_q_system_prompt = """You are not a conversational assistant. You are a strict linguistic text processor.
+Your ONLY job is to read the chat history and rewrite the final user question so it is a standalone sentence.
+Do not engage in conversation. Do not answer the question. Do not explain yourself. Output NOTHING but the rewritten question.
 
-CRITICAL RULES:
-- Output ONLY the rewritten question.
-- Do NOT answer the question.
-- Do NOT apologize.
-- Do NOT say "Here is the rewritten question".
-- Provide absolutely no conversational text."""
+EXAMPLES:
+
+History: 
+Human: What is Python?
+AI: Python is a popular programming language.
+Question: Is it hard to learn?
+Output: Is Python hard to learn?
+
+History: 
+Human: What is the capital of France?
+AI: Paris.
+Question: What is a variable in programming?
+Output: What is a variable in programming?
+
+History:
+Human: How do I install dependencies?
+AI: You can use pip or uv.
+Question: Which one is faster?
+Output: Which dependency manager is faster, pip or uv?
+
+Now process the following real input.
+"""
 
 _contextualize_q_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", _contextualize_q_system_prompt),
         MessagesPlaceholder("chat_history"),
-        ("human", "{input}"),
+        ("human", "Question: {input}\nOutput:"),
     ]
 )
 
@@ -55,6 +73,17 @@ _qa_prompt = ChatPromptTemplate.from_messages(
 _answer_generator = _qa_prompt | _llm | StrOutputParser()
 
 
+def manage_history_window():
+    global _chat_history
+
+    # question and answer
+    max_messages = 2 * MAX_HISTORY_LENGTH
+
+    # if there are too many messages, delete the old ones
+    if len(_chat_history) > max_messages:
+        _chat_history = _chat_history[-max_messages:]
+
+
 def format_docs(docs: list[Document]) -> str:
     return "\n\n".join(doc.page_content for doc in docs)
 
@@ -64,13 +93,14 @@ def generate_message(user_prompt: str):
         {"chat_history": _chat_history, "input": user_prompt}
     )
 
-    yield f"`Message for the docs: {question_for_docs}`\n"
+    print(f"`Message for the docs: {question_for_docs}`\n")
 
     docs = db.retriever.invoke(question_for_docs)
     context_string = format_docs(docs)
 
+    print(f"`Context string: {context_string}`\n")
+
     # later there will be some setting to check if the user want to generate messages even when nothing was found in the rag
-    yield f"`Context string: {context_string}`\n"
     if not context_string:
         # context_string = """
         # No data was found with the RAG, nothing in the saved documents,

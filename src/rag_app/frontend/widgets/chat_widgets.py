@@ -27,7 +27,7 @@ class AIMessage(Horizontal):
 
     def update_text(self, new_text: str) -> None:
         self.message = new_text
-        formatted_text = f"**{Role.AI.value}**: \n{self.message}"
+        formatted_text = f"**{Role.AI.value}**: \n\n{self.message}"
         self.md_widget.update(formatted_text)
 
 

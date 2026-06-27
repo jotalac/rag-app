@@ -9,6 +9,7 @@ from textual.worker import Worker, get_current_worker
 from rag_app.backend.rag import generate_message
 from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
+import os
 
 
 class RagApp(App):
@@ -160,7 +161,10 @@ class RagApp(App):
     @work(thread=True)
     def run_thread_command(self, user_prompt: str, chat_text_box: ChatText) -> None:
 
-        loader = CustomSpinner(message="Processing request", id="cmd-loader")
+        loader = CustomSpinner(
+            message="Processing request (embedding large files might take several minutes...)",
+            id="cmd-loader",
+        )
 
         def mount_loader():
             chat_text_box.mount(loader)

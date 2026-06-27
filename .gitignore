@@ -5,8 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+*.egg
 
 # Virtual environments
 .venv
+env/
 
 documents/*
+.rag_data
+
+.mypy_cache/
+.textual/
