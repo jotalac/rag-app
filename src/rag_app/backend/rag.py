@@ -20,6 +20,7 @@ MAX_HISTORY_LENGTH = 5
 _contextualize_q_system_prompt = """You are not a conversational assistant. You are a strict linguistic text processor.
 Your ONLY job is to read the chat history and rewrite the final user question so it is a standalone sentence.
 Do not engage in conversation. Do not answer the question. Do not explain yourself. Output NOTHING but the rewritten question.
+If the question make sense by it self DO NOT change it.
 
 EXAMPLES:
 

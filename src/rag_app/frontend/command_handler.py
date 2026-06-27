@@ -9,6 +9,7 @@ class Commands(Enum):
     ADD_RESOURCES = "/add-resources"
     ADD_RESOURCES_DIR = "/add-resources-dir"
     REMOVE_RESOURCES = "/remove-resources"
+    REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
     CLEAR_MEMORY = "/clear-memory"
     EXIT = "/exit"
@@ -46,7 +47,7 @@ def _handle_add_resources_dir(args: list[str] | None) -> tuple[SystemMessageType
     print(target_dir)
 
     if not target_dir.exists() or not target_dir.is_dir():
-        return (SystemMessageType.ERROR, f"❌ Directory not found: {dir_name}.")
+        return (SystemMessageType.ERROR, f"❌ Directory not found: {dir_name}")
 
     file_found = False
 
@@ -79,6 +80,13 @@ def _handle_remove_resources(args: list[str] | None) -> tuple[SystemMessageType,
     return (SystemMessageType.INFO, output_message.strip())
 
 
+def _handle_remove_resources_all(
+    args: list[str] | None,
+) -> tuple[SystemMessageType, str]:
+    db.remove_all_resources()
+    return (SystemMessageType.INFO, "All resources were removed")
+
+
 def _handle_list_resources(args: list[str] | None) -> tuple[SystemMessageType, str]:
     all_resources = db.list_all_uploaded_files()
     if not all_resources:
@@ -95,6 +103,7 @@ COMMAND_REGISTRY = {
     Commands.ADD_RESOURCES.value: _handle_add_resources,
     Commands.ADD_RESOURCES_DIR.value: _handle_add_resources_dir,
     Commands.REMOVE_RESOURCES.value: _handle_remove_resources,
+    Commands.REMOVE_RESOURCES_ALL.value: _handle_remove_resources_all,
     Commands.LIST_RESOURCES.value: _handle_list_resources,
     Commands.CLEAR_MEMORY.value: _handle_clear_history,
 }

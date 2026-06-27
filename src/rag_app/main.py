@@ -1,5 +1,6 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Static, LoadingIndicator
+from textual.widgets import Footer, Static
+from textual.containers import Vertical
 from rag_app.frontend.widgets.prompt_input import PromptInput
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from pathlib import Path
@@ -165,6 +166,8 @@ class RagApp(App):
             message="Processing request (embedding large files might take several minutes...)",
             id="cmd-loader",
         )
+
+        progress_message = Vertical
 
         def mount_loader():
             chat_text_box.mount(loader)

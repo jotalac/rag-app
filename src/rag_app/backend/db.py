@@ -134,6 +134,13 @@ def remove_resource(filename: str) -> bool:
     return True
 
 
+def remove_all_resources() -> None:
+    all_keys = _record_manager.list_keys()
+
+    _vector_database.delete(all_keys)
+    _record_manager.delete_keys(all_keys)
+
+
 def list_all_uploaded_files() -> list[str]:
     query = text("""
                  SELECT DISTINCT group_id

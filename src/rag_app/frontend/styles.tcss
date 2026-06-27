@@ -50,7 +50,7 @@
 
 .message-row.info .message-bubble {
     background: $secondary 20%;
-    color: $secondary;
+    color: $primary;
     border: solid $secondary;
 }
 
