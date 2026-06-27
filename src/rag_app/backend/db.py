@@ -78,7 +78,7 @@ def add_resource(filename: str) -> bool:
     elif file_extension == ".txt":
         loader = TextLoader(file_path)  # type: ignore
     elif file_extension == ".html":
-        loader = BSHTMLLoader(file_path)
+        loader = BSHTMLLoader(file_path)  # type: ignore
     else:
         print(f"File with extention {file_extension} is not supported")
         return False

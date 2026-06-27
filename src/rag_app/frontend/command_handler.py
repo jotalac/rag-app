@@ -12,34 +12,40 @@ class Commands(Enum):
     REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
     CLEAR_MEMORY = "/clear-memory"
+    HELP = "/help"
     EXIT = "/exit"
 
 
-def _add_resource(resource_name: str) -> str:
+def _add_resource(resource_name: str) -> tuple[SystemMessageType, str]:
     if db.add_resource(resource_name):
-        return f"✅ Added: {resource_name}\n"
+        return (SystemMessageType.SUCCESS, f"✅ Added: {resource_name}")
     else:
-        return f"❌ Failed to add: {resource_name}\n"
+        return (SystemMessageType.ERROR, f"❌ Failed to add: {resource_name}")
 
 
-def _handle_add_resources(args: list[str] | None) -> tuple[SystemMessageType, str]:
+def _remove_resource(resource_name: str) -> str:
+    if db.remove_resource(resource_name):
+        return f"🗑️ Removed: {resource_name}\n"
+    else:
+        return f"❌ Failed to delete: {resource_name}\n"
+
+
+def _handle_add_resources(args: list[str] | None):
     if not args:
-        return (SystemMessageType.ERROR, "No filename provided")
+        yield (SystemMessageType.ERROR, "No filename provided")
+        return
 
-    output_message = ""
     for resource_file_name in args:
-        output_message += _add_resource(resource_file_name)
-
-    return (SystemMessageType.INFO, output_message.strip())
+        yield _add_resource(resource_file_name)
 
 
-def _handle_add_resources_dir(args: list[str] | None) -> tuple[SystemMessageType, str]:
+def _handle_add_resources_dir(args: list[str] | None):
     if not args:
-        return (SystemMessageType.ERROR, "No directory provided")
+        yield (SystemMessageType.ERROR, "No directory name provided")
+        return
     if len(args) > 1:
-        return (SystemMessageType.ERROR, "You can add only one directory at time.")
-
-    output_message = ""
+        yield (SystemMessageType.ERROR, "You can add only one directory at time.")
+        return
 
     dir_name = args[0]
     target_dir = db.DOCUMENT_BASE_DIR / dir_name
@@ -47,56 +53,98 @@ def _handle_add_resources_dir(args: list[str] | None) -> tuple[SystemMessageType
     print(target_dir)
 
     if not target_dir.exists() or not target_dir.is_dir():
-        return (SystemMessageType.ERROR, f"❌ Directory not found: {dir_name}")
+        yield (SystemMessageType.ERROR, f"❌ Directory not found: {dir_name}")
+        return
 
-    file_found = False
+    all_files = [f for f in target_dir.rglob("*") if f.is_file()]
+    file_count = len(all_files)
+
+    if file_count == 0:
+        yield (SystemMessageType.ERROR, f"No files found in directory: {dir_name}")
+        return
+
+    yield (SystemMessageType.INFO, f"🔍 Found {file_count} files. Starting indexing...")
 
     # go through all file recursively in the dir
-    for file_path in target_dir.rglob("*"):
-        if file_path.is_file():
-            file_found = True
+    for current_file_index, file_path in enumerate(all_files):
 
         # get relative path
         file_relative_path = str(file_path.relative_to(db.DOCUMENT_BASE_DIR))
 
-        output_message += _add_resource(file_relative_path)
+        yield (
+            SystemMessageType.INFO,
+            f"[{current_file_index + 1}/{file_count}] - ⏳ Processing: {file_relative_path}",
+        )
 
-    if not file_found:
-        return (SystemMessageType.ERROR, f"No files found in directory: {dir_name}")
-    else:
-        return (SystemMessageType.INFO, output_message.strip())
+        add_result = _add_resource(file_relative_path)
+
+        yield (
+            SystemMessageType.INFO,
+            f"{current_file_index + 1 }/{file_count} - {add_result}",
+        )
+
+    yield (SystemMessageType.INFO, "Directory processing complete!")
 
 
-def _handle_remove_resources(args: list[str] | None) -> tuple[SystemMessageType, str]:
+def _handle_remove_resources(args: list[str] | None):
     if not args:
-        return (SystemMessageType.ERROR, "No filename provided")
+        yield (SystemMessageType.ERROR, "No filename provided")
+        return
 
-    output_message = ""
+    output_string = ""
     for resource_file in args:
-        if db.remove_resource(resource_file):
-            output_message += f"🗑️ Deleted: {resource_file}\n"
-        else:
-            output_message += f"❌ Failed to delete: {resource_file}\n"
-    return (SystemMessageType.INFO, output_message.strip())
+        output_string += _remove_resource(resource_file)
+
+    yield (SystemMessageType.INFO, output_string)
 
 
-def _handle_remove_resources_all(
-    args: list[str] | None,
-) -> tuple[SystemMessageType, str]:
+def _handle_remove_resources_all(args: list[str] | None):
     db.remove_all_resources()
-    return (SystemMessageType.INFO, "All resources were removed")
+    yield (SystemMessageType.INFO, "All resources were removed")
 
 
-def _handle_list_resources(args: list[str] | None) -> tuple[SystemMessageType, str]:
+def _handle_list_resources(args: list[str] | None):
     all_resources = db.list_all_uploaded_files()
     if not all_resources:
-        return (SystemMessageType.INFO, "No documents uploaded")
-    return (SystemMessageType.INFO, "".join([f"📁 {r}\n" for r in all_resources]))
+        yield (SystemMessageType.INFO, "No documents uploaded")
+    else:
+        yield (SystemMessageType.INFO, "".join([f"📁 {r}\n" for r in all_resources]))
 
 
-def _handle_clear_history(args: list[str] | None) -> tuple[SystemMessageType, str]:
+def _handle_clear_history(args: list[str] | None):
     clear_chat_history()
-    return (SystemMessageType.INFO, "⏱️ Chat memory cleared")
+    yield (SystemMessageType.INFO, "⏱️ Chat memory cleared")
+
+
+def _handle_help(args: list[str] | None):
+    # FIX: Use yield instead of return!
+    help_text = """**Available Commands:**
+
+🔹 `/add-resources [file1] [file2]...` 
+Embeds specific files into the database.
+
+🔹 `/add-resources-dir [folder]` 
+Recursively embeds all files within a specific folder.
+
+🔹 `/remove-resources [file1] [file2]...` 
+Deletes specific files from the database.
+
+🔹 `/remove-resources-all` 
+Wipes the entire vector database.
+
+🔹 `/list-resources` 
+Displays a list of all currently indexed files.
+
+🔹 `/clear-memory` 
+Wipes the conversational chat history so the AI forgets previous messages.
+
+🔹 `/help` 
+Displays this help message.
+
+🔹 `/exit` 
+Closes the application.
+"""
+    yield (SystemMessageType.INFO, help_text.strip())
 
 
 COMMAND_REGISTRY = {
@@ -105,11 +153,12 @@ COMMAND_REGISTRY = {
     Commands.REMOVE_RESOURCES.value: _handle_remove_resources,
     Commands.REMOVE_RESOURCES_ALL.value: _handle_remove_resources_all,
     Commands.LIST_RESOURCES.value: _handle_list_resources,
+    Commands.HELP.value: _handle_help,
     Commands.CLEAR_MEMORY.value: _handle_clear_history,
 }
 
 
-def handle_command(user_input: str) -> tuple[SystemMessageType, str]:
+def handle_command(user_input: str):
     parts = user_input.split()
     command = parts[0]
     args = parts[1::] if len(parts) > 1 else None
@@ -117,6 +166,6 @@ def handle_command(user_input: str) -> tuple[SystemMessageType, str]:
     handler_function = COMMAND_REGISTRY.get(command)
 
     if handler_function is not None:
-        return handler_function(args)
+        yield from handler_function(args)
     else:
-        return (SystemMessageType.ERROR, "Invalid command")
+        yield (SystemMessageType.ERROR, "Invalid command")

@@ -10,7 +10,7 @@ from textual.worker import Worker, get_current_worker
 from rag_app.backend.rag import generate_message
 from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
-import os
+from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 
 
 class RagApp(App):
@@ -122,7 +122,7 @@ class RagApp(App):
 
             self.is_working = True
 
-            self.run_thread_command(user_prompt, chat_text_box)
+            self.active_worker = self.run_thread_command(user_prompt, chat_text_box)
             # chat_text_box.add_system_message(message=message, message_type=status)
 
         else:
@@ -146,46 +146,64 @@ class RagApp(App):
 
         # display the text as it is being generated
         for chunk in generate_message(user_prompt):
-            # check if the generation wasn't canceled
-            if worker.is_cancelled:
-                break
-
             # append the new generated chunk
             acc_response += chunk
             self.app.call_from_thread(message_widget.update_text, acc_response)
 
             self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
 
+            # check if the generation wasn't canceled
+            if worker.is_cancelled:
+                break
+
         if not worker.is_cancelled:
             self.is_working = False
 
     @work(thread=True)
     def run_thread_command(self, user_prompt: str, chat_text_box: ChatText) -> None:
+        worker = get_current_worker()
 
+        # add the loader indicator
         loader = CustomSpinner(
-            message="Processing request (embedding large files might take several minutes...)",
+            message="Processing request",
             id="cmd-loader",
         )
 
-        progress_message = Vertical
-
         def mount_loader():
-            chat_text_box.mount(loader)
-            chat_text_box.scroll_end(animate=False)
+            if not chat_text_box.query("#cmd-loader"):
+                chat_text_box.mount(loader)
+                chat_text_box.scroll_end(animate=False)
+
+        def cleanup():
+            loaders = chat_text_box.query("#cmd-loader")
+            if loaders:
+                loaders.remove()
+                chat_text_box.scroll_end(animate=False)
 
         self.app.call_from_thread(mount_loader)
 
-        status, message = handle_command(user_prompt)
+        for status, message in handle_command(user_prompt):
 
-        def update_ui():
-            chat_text_box.query_one("#cmd-loader").remove()
+            def post_update(s=status, m=message):
+                cleanup()
+                chat_text_box.add_system_message(m, s)  # type: ignore
+                mount_loader()
 
-            # Post the real result
-            chat_text_box.add_system_message(message=message, message_type=status)
-            chat_text_box.scroll_end(animate=False)
+            self.app.call_from_thread(post_update)
 
-        self.app.call_from_thread(update_ui)
-        self.is_working = False
+            # check if the command wasn't canceled
+            if worker.is_cancelled:
+                self.app.call_from_thread(
+                    chat_text_box.add_system_message,
+                    "Command canceled!",
+                    SystemMessageType.INFO,
+                )
+                break
+
+        self.app.call_from_thread(cleanup)
+
+        if not worker.is_cancelled:
+            self.is_working = False
 
 
 def run_cli():
