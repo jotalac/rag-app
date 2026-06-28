@@ -6,7 +6,9 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 
-_llm = ChatOllama(model="gemma4:e4b", temperature=0)
+gen_model = "llama3.2:4b"
+
+_llm = ChatOllama(model=gen_model, temperature=0)
 
 # llm = ChatGoogleGenerativeAI(
 #     model="gemini-3.5-flash",

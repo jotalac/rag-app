@@ -12,6 +12,7 @@ class Commands(Enum):
     REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
     CLEAR_MEMORY = "/clear-memory"
+    CONFIG = "/config"
     HELP = "/help"
     EXIT = "/exit"
 
@@ -48,7 +49,7 @@ def _handle_add_resources_dir(args: list[str] | None):
         return
 
     dir_name = args[0]
-    target_dir = db.DOCUMENT_BASE_DIR / dir_name
+    target_dir = db.resources_dir / dir_name
 
     print(target_dir)
 
@@ -69,7 +70,7 @@ def _handle_add_resources_dir(args: list[str] | None):
     for current_file_index, file_path in enumerate(all_files):
 
         # get relative path
-        file_relative_path = str(file_path.relative_to(db.DOCUMENT_BASE_DIR))
+        file_relative_path = str(file_path.relative_to(db.resources_dir))
 
         yield (
             SystemMessageType.INFO,
@@ -122,6 +123,8 @@ def _handle_help(args: list[str] | None):
 Ask questions about your resources.
         
 ## Available Commands:
+
+_*all file paths are relative to the `resources directory`_
 
 **`/add-resources [file1] [file2]...`**
 Embeds specific files into the database.

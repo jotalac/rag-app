@@ -4,17 +4,19 @@ ConfigModal {
 }
 
 #config-dialog {
-    width: 60;
+    width: 70%;
+    max-width: 110;
     height: auto;
     padding: 1 2;
     background: $surface;
     border: thick $primary;
 }
 
-#config-title {
+.config-title {
     text-align: center;
     text-style: bold;
     margin-bottom: 1;
+    color: $primary;
 }
 
 .config-row {
@@ -23,11 +25,12 @@ ConfigModal {
 }
 
 .config-row Label {
-    margin-top: 1; /* Aligns vertically with inputs/switches */
+    margin-top: 1;
+    width: 25;
 }
 
 .config-row Input {
-    width: 25;
+    width: 1fr;
 }
 
 .config-row Select {
@@ -42,4 +45,10 @@ ConfigModal {
 
 #config-actions Button {
     margin: 0 1;
+}
+
+.label-note {
+    max-width: 90%;
+    color: $text-muted;
+    text-style: italic;
 }

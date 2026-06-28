@@ -4,6 +4,9 @@ from textual.screen import ModalScreen
 from textual.containers import Vertical
 from textual.widgets import Switch, Label, Input, Select, Button
 from textual.containers import Vertical, Horizontal
+from textual import on
+from rag_app.backend.rag import gen_model
+from rag_app.backend.db import resources_dir, embed_model
 
 
 class ConfigModal(ModalScreen):
@@ -11,39 +14,70 @@ class ConfigModal(ModalScreen):
     CSS_PATH = "../styles/style_config_modal.tcss"
 
     BINDINGS = [
-        ("esc", "dismiss", "Close config"),
+        ("escape", "close_config", "Close config"),
+        ("ctrl+s", "save_config", "Save config"),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical(id="config-dialog"):
-            yield Label("Application Settings", id="config-title")
+            yield Label("Application Config", classes="config-title")
 
-            # 1. Toggle Setting (e.g., Enable Stream Mode)
             with Horizontal(classes="config-row"):
-                yield Label("Enable Streaming:")
-                yield Switch(value=True, id="cfg-streaming")
-
-            # 2. Text Input Setting (e.g., Change Model Name)
-            with Horizontal(classes="config-row"):
-                yield Label("Ollama Model:")
+                yield Label("Resources directory:")
                 yield Input(
-                    value="gemma4:e4b", placeholder="e.g., llama3.1", id="cfg-model"
+                    value=str(resources_dir),
+                    placeholder="absolute path eg. /home/user/...",
+                    id="cfg-res-dir",
                 )
 
-            # 3. Dropdown Setting (e.g., Temperature Selection)
+            yield Label("Model config", classes="config-title")
+
             with Horizontal(classes="config-row"):
-                yield Label("Temperature:")
-                yield Select(
-                    options=[
-                        ("0.0 (Precise)", 0.0),
-                        ("0.7 (Balanced)", 0.7),
-                        ("1.0 (Creative)", 1.0),
-                    ],
-                    value=0.0,
-                    id="cfg-temperature",
+                yield Label("Generation model (LLM):")
+                yield Input(
+                    value=gen_model, placeholder="e.g., llama3.2:4b", id="cfg-model"
                 )
 
-            # 4. Action Buttons
+            with Horizontal(classes="config-row"):
+                yield Label("Embedding model*:")
+                yield Input(
+                    value=embed_model,
+                    placeholder="e.g., nomic-embed-text",
+                    id="cfg-embed-model",
+                )
+
+            yield Label(
+                "*After changing embedding model all resources will be removed",
+                classes="label-note",
+            )
+
+            # with Horizontal(classes="config-row"):
+            #     yield Label("Temperature:")
+            #     yield Select(
+            #         options=[
+            #             ("0.0 (Default)", 0.0),
+            #             ("0.7 (Balanced)", 0.7),
+            #             ("1.0 (Creative)", 1.0),
+            #         ],
+            #         value=0.0,
+            #         id="cfg-temperature",
+            #     )
+
             with Horizontal(id="config-actions"):
-                yield Button("Save & Close", variant="primary", id="btn-save")
-                yield Button("Cancel", variant="error", id="btn-cancel")
+                yield Button(
+                    r"Save & Close \[^s]", variant="success", flat=True, id="btn-save"
+                )
+                yield Button(
+                    r"Cancel \[esc]",
+                    variant="error",
+                    flat=True,
+                    id="btn-cancel",
+                )
+
+    @on(Button.Pressed, "#btn-cancel")
+    def action_close_config(self) -> None:
+        self.dismiss()
+
+    @on(Button.Pressed, "#btn-save")
+    def action_save_config(self) -> None:
+        print("Saving config")

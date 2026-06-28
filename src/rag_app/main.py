@@ -12,6 +12,7 @@ from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.config_modal import ConfigModal
+import rag_app.backend.db as db
 
 
 class RagApp(App):
@@ -45,6 +46,7 @@ class RagApp(App):
     def on_mount(self):
         self.add_welcome_text()
         self.action_focus_input()
+        db.load_all_config_values()
 
     # ACTIONS
     def action_toggle_dark(self) -> None:
@@ -124,6 +126,10 @@ class RagApp(App):
         if user_prompt.startswith("/"):
             if user_prompt == Commands.EXIT.value:
                 self.exit()
+                return
+
+            if user_prompt == Commands.CONFIG.value:
+                self.action_open_config()
                 return
 
             self.is_working = True

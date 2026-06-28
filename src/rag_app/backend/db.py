@@ -9,11 +9,14 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.indexes import _sql_record_manager
 from langchain_core.indexing import index
-from sqlalchemy import create_engine, text
+from sqlalchemy import MetaData, Table, Column, String, select, create_engine, text
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import os
 from typing import Final
 from pathlib import Path
 from langchain_chroma import Chroma
+from rag_app.backend.user_config_keys import ConfigKeys
+from rag_app.backend.rag import gen_model
 
 ROOT_PATH = Path(__file__).parent.parent.parent.parent
 
@@ -25,15 +28,21 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_CONNECTION_STRING: Final = f"sqlite:///{DATA_DIR / 'record_manager.sqlite'}"
 COLLECTION_NAME: Final = "rag-files"
 
+DEFAULT_RES_DIR = ROOT_PATH / "documents"
+
+embed_model = "nomic-embed-text"
+
 # folder documents (later it will be entered by the user and saved in the db)
-DOCUMENT_BASE_DIR = ROOT_PATH / "documents"
+resources_dir = DEFAULT_RES_DIR
+if not resources_dir.exists():
+    os.mkdir(resources_dir)
 
 # init local ollama model
-embeddings_model: Final = OllamaEmbeddings(model="nomic-embed-text")
+_embeddings_model: Final = OllamaEmbeddings(model=embed_model)
 
 # connect to the chroma db
 _vector_database: Final = Chroma(
-    embedding_function=embeddings_model,
+    embedding_function=_embeddings_model,
     collection_name=COLLECTION_NAME,
     persist_directory=str(DATA_DIR / "chroma_db"),
 )
@@ -56,11 +65,21 @@ _record_manager.create_schema()
 
 # normal connection to db
 _engine = create_engine(DB_CONNECTION_STRING)
-_db_connection = _engine.connect()
+
+# add the user config table
+metadata = MetaData()
+user_config_table = Table(
+    "user_config",
+    metadata,
+    Column("config_key", String, primary_key=True),
+    Column("config_value", String),
+)
+
+metadata.create_all(_engine)
 
 
 def add_resource(filename: str) -> bool:
-    file_path = DOCUMENT_BASE_DIR / filename
+    file_path = resources_dir / filename
 
     print("File path is: " + str(file_path))
 
@@ -106,11 +125,11 @@ def add_resource(filename: str) -> bool:
 
 
 def remove_resource(filename: str) -> bool:
-    file_path = DOCUMENT_BASE_DIR / filename
+    file_path = resources_dir / filename
 
     # if the file is not at the root docs directory search recursively
     if not file_path.exists():
-        matches = list(DOCUMENT_BASE_DIR.rglob(filename))
+        matches = list(resources_dir.rglob(filename))
 
         if len(matches) > 1:
             print(f"Multiple files with name: {filename}")
@@ -148,10 +167,69 @@ def list_all_uploaded_files() -> list[str]:
                  WHERE group_id IS NOT NULL
                  """)
 
-    result = _db_connection.execute(query)
+    with _engine.connect() as conn:
+        result = conn.execute(query)
 
-    unique_files = []
-    for row in result:
-        unique_files.append(str(Path(row[0]).relative_to(DOCUMENT_BASE_DIR)))
+        unique_files = []
+        for row in result:
+            unique_files.append(str(Path(row[0]).relative_to(resources_dir)))
 
-    return unique_files
+        return unique_files
+
+
+def set_config(key: str, value: str) -> None:
+    with _engine.connect() as conn:
+        # upsert the value to the config table
+        query = sqlite_insert(user_config_table).values(
+            config_key=key, config_value=value
+        )
+
+        query = query.on_conflict_do_update(
+            index_elements=["config_key"],
+            set_=dict(config_value=query.excluded.config_value),
+        )
+
+        conn.execute(query)
+        conn.commit()
+
+
+def get_config(key: str, default: str | None = None) -> str | None:
+    with _engine.connect() as conn:
+        query = select(user_config_table.c.config_value).where(
+            user_config_table.c.config_key == key
+        )
+
+        result = conn.execute(query).scalar_one_or_none()
+
+        return result if result is not None else default
+
+
+def get_configs(keys: list[str]) -> dict[str, str]:
+    with _engine.connect() as conn:
+        query = select(
+            user_config_table.c.config_key, user_config_table.c.config_value
+        ).where(user_config_table.c.config_key.in_(keys))
+
+        result = conn.execute(query)
+        return {row[0]: row[1] for row in result}
+
+
+def load_all_config_values() -> None:
+    global gen_model, embed_model, resources_dir
+
+    keys_to_fetch = [
+        ConfigKeys.RESOURCES_DIR.value,
+        ConfigKeys.GEN_MODEL.value,
+        ConfigKeys.EMBED_MODEL.value,
+    ]
+
+    configs = get_configs(keys_to_fetch)
+
+    if ConfigKeys.RESOURCES_DIR.value in configs:
+        resources_dir = Path(configs[ConfigKeys.RESOURCES_DIR.value])
+
+    if ConfigKeys.GEN_MODEL.value in configs:
+        gen_model = configs[ConfigKeys.GEN_MODEL.value]
+
+    if ConfigKeys.EMBED_MODEL.value in configs:
+        embed_model = configs[ConfigKeys.EMBED_MODEL.value]
