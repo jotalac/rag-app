@@ -25,9 +25,9 @@ def _add_resource(resource_name: str) -> tuple[SystemMessageType, str]:
 
 def _remove_resource(resource_name: str) -> str:
     if db.remove_resource(resource_name):
-        return f"🗑️ Removed: {resource_name}\n"
+        return f"- 🗑️ Removed: {resource_name} \n"
     else:
-        return f"❌ Failed to delete: {resource_name}\n"
+        return f"- ❌ Failed to delete: {resource_name} \n"
 
 
 def _handle_add_resources(args: list[str] | None):
@@ -108,7 +108,7 @@ def _handle_list_resources(args: list[str] | None):
     if not all_resources:
         yield (SystemMessageType.INFO, "No documents uploaded")
     else:
-        yield (SystemMessageType.INFO, "".join([f"📁 {r}\n" for r in all_resources]))
+        yield (SystemMessageType.INFO, "\n".join([f"- 📁 {r}" for r in all_resources]))
 
 
 def _handle_clear_history(args: list[str] | None):
@@ -117,31 +117,41 @@ def _handle_clear_history(args: list[str] | None):
 
 
 def _handle_help(args: list[str] | None):
-    # FIX: Use yield instead of return!
-    help_text = """**Available Commands:**
+    help_text = """
+# RAG APP
+Ask questions about your resources.
+        
+## Available Commands:
 
-🔹 `/add-resources [file1] [file2]...` 
+**`/add-resources [file1] [file2]...`**
 Embeds specific files into the database.
 
-🔹 `/add-resources-dir [folder]` 
+
+**`/add-resources-dir [folder]`**
 Recursively embeds all files within a specific folder.
 
-🔹 `/remove-resources [file1] [file2]...` 
+
+**`/remove-resources [file1] [file2]...`**
 Deletes specific files from the database.
 
-🔹 `/remove-resources-all` 
+
+**`/remove-resources-all`**
 Wipes the entire vector database.
 
-🔹 `/list-resources` 
+
+**`/list-resources`**
 Displays a list of all currently indexed files.
 
-🔹 `/clear-memory` 
-Wipes the conversational chat history so the AI forgets previous messages.
 
-🔹 `/help` 
+**`/clear-memory`**
+Wipes the conversational chat history so the previous messages will be forgotten.
+
+
+**`/help`**
 Displays this help message.
 
-🔹 `/exit` 
+
+**`/exit`**
 Closes the application.
 """
     yield (SystemMessageType.INFO, help_text.strip())

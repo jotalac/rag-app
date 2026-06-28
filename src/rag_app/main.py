@@ -1,5 +1,5 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Static
+from textual.widgets import Footer, Static, Header
 from textual.containers import Vertical
 from rag_app.frontend.widgets.prompt_input import PromptInput
 from rag_app.frontend.widgets.chat_widgets import ChatText
@@ -11,11 +11,12 @@ from rag_app.backend.rag import generate_message
 from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
+from rag_app.frontend.widgets.config_modal import ConfigModal
 
 
 class RagApp(App):
 
-    CSS_PATH = "frontend/styles.tcss"
+    CSS_PATH = "frontend/styles/style.tcss"
 
     BINDINGS = [
         ("d", "toggle_dark", "Toggle dark mode"),
@@ -23,6 +24,7 @@ class RagApp(App):
         ("escape", "unfocus_input", "Unfocus input"),
         ("ctrl+l", "clear_chat", "Clear chat"),
         ("ctrl+c", "cancel_ai_generation", "Cancel AI generation"),
+        ("c", "open_config", "Open Config"),
     ]
 
     def __init__(self, **kwargs):
@@ -32,7 +34,7 @@ class RagApp(App):
         self.active_ai_widget: AIMessage | None = None
 
     def compose(self) -> ComposeResult:
-        # yield Header()
+        yield Header()
 
         yield ChatText()
 
@@ -40,6 +42,11 @@ class RagApp(App):
 
         yield Footer(show_command_palette=False)
 
+    def on_mount(self):
+        self.add_welcome_text()
+        self.action_focus_input()
+
+    # ACTIONS
     def action_toggle_dark(self) -> None:
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
@@ -77,9 +84,8 @@ class RagApp(App):
         await chat_text_box.remove_children()
         self.add_welcome_text()
 
-    def on_mount(self):
-        self.add_welcome_text()
-        self.action_focus_input()
+    def action_open_config(self) -> None:
+        self.push_screen(ConfigModal())
 
     def add_welcome_text(self) -> None:
         current_dir = Path(__file__).parent
@@ -144,17 +150,27 @@ class RagApp(App):
         worker = get_current_worker()
         acc_response = ""
 
-        # display the text as it is being generated
-        for chunk in generate_message(user_prompt):
-            # append the new generated chunk
-            acc_response += chunk
-            self.app.call_from_thread(message_widget.update_text, acc_response)
+        try:
+            # display the text as it is being generated
+            for chunk in generate_message(user_prompt):
+                # append the new generated chunk
+                acc_response += chunk
+                self.app.call_from_thread(message_widget.update_text, acc_response)
 
-            self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
+                self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
 
-            # check if the generation wasn't canceled
-            if worker.is_cancelled:
-                break
+                # check if the generation wasn't canceled
+                if worker.is_cancelled:
+                    break
+        except Exception:
+            # display error message
+            self.app.call_from_thread(
+                chat_text_box.add_system_message,
+                "**AI generation failed**  \n\n Make sure:\n- Ollama is running: `ollama serve`\n- You have downloaded the configured model: `ollama pull ...`",
+                SystemMessageType.ERROR,
+            )
+
+            self.app.call_from_thread(message_widget.remove)  # type: ignore
 
         if not worker.is_cancelled:
             self.is_working = False

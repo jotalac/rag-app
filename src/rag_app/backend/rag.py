@@ -6,11 +6,11 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 
-_llm = ChatOllama(model="llama3.2:3b", temperature=0)
+_llm = ChatOllama(model="gemma4:e4b", temperature=0)
 
 # llm = ChatGoogleGenerativeAI(
 #     model="gemini-3.5-flash",
-#     api_key="AIzaSyBNh3oQYeMzrwcpkERsXY9pWXgYyQv8dUI",
+#     api_key="...",
 # )
 
 # adding history context to the llm
@@ -108,7 +108,7 @@ def generate_message(user_prompt: str):
         # so generate the best answer you can without the resouces,
         # or just answer that you dont know.
         # """
-        yield "No relatable data availible."
+        yield "No relatable data available."
         return
 
     full_answer = ""
@@ -122,6 +122,8 @@ def generate_message(user_prompt: str):
     # add the new response to the history
     _chat_history.append(HumanMessage(user_prompt))
     _chat_history.append(AIMessage(full_answer))
+
+    manage_history_window()
 
 
 def clear_chat_history():

@@ -48,8 +48,8 @@ class SystemMessage(Horizontal):
         self.message_type = message_type
 
     def compose(self) -> ComposeResult:
-        formatted_text = f"[b]{self.message_type.value}[/b]:\n\n{self.message}"
-        yield Static(formatted_text, classes="message-bubble")
+        formatted_text = f"**{self.message_type.value}**: \n\n{self.message}"
+        yield Markdown(formatted_text, classes="message-bubble")
 
 
 class ChatText(VerticalScroll):
