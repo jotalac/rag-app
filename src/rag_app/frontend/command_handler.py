@@ -18,10 +18,14 @@ class Commands(Enum):
 
 
 def _add_resource(resource_name: str) -> tuple[SystemMessageType, str]:
-    if db.add_resource(resource_name):
-        return (SystemMessageType.SUCCESS, f"✅ Added: {resource_name}")
+    success, message = db.add_resource(resource_name)
+    if success:
+        return (SystemMessageType.SUCCESS, f"✅ Added **{resource_name}** - {message}")
     else:
-        return (SystemMessageType.ERROR, f"❌ Failed to add: {resource_name}")
+        return (
+            SystemMessageType.ERROR,
+            f"❌ Failed to add **{resource_name}** - {message}",
+        )
 
 
 def _remove_resource(resource_name: str) -> str:
@@ -54,7 +58,7 @@ def _handle_add_resources_dir(args: list[str] | None):
     print(target_dir)
 
     if not target_dir.exists() or not target_dir.is_dir():
-        yield (SystemMessageType.ERROR, f"❌ Directory not found: {dir_name}")
+        yield (SystemMessageType.ERROR, f"Directory not found: {dir_name}")
         return
 
     all_files = [f for f in target_dir.rglob("*") if f.is_file()]
@@ -81,7 +85,7 @@ def _handle_add_resources_dir(args: list[str] | None):
 
         yield (
             SystemMessageType.INFO,
-            f"{current_file_index + 1 }/{file_count} - {add_result}",
+            f"{current_file_index + 1 }/{file_count} - {add_result[1]}",
         )
 
     yield (SystemMessageType.INFO, "Directory processing complete!")
@@ -101,7 +105,7 @@ def _handle_remove_resources(args: list[str] | None):
 
 def _handle_remove_resources_all(args: list[str] | None):
     db.remove_all_resources()
-    yield (SystemMessageType.INFO, "All resources were removed")
+    yield (SystemMessageType.INFO, "🗑️ All resources were removed")
 
 
 def _handle_list_resources(args: list[str] | None):
@@ -125,6 +129,11 @@ Ask questions about your resources.
 ## Available Commands:
 
 _*all file paths are relative to the `resources directory`_
+
+
+
+**`/config`**
+Open application config.
 
 **`/add-resources [file1] [file2]...`**
 Embeds specific files into the database.

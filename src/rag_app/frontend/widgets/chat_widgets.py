@@ -69,3 +69,9 @@ class ChatText(VerticalScroll):
     def add_system_message(self, message: str, message_type: SystemMessageType) -> None:
         self.mount(SystemMessage(message, message_type))
         self.scroll_end(animate=False)
+
+    def add_ollama_error_message(self) -> None:
+        self.add_system_message(
+            message="**Ollama error**  \n\n Make sure:\n- Ollama is running: `ollama serve`\n- You have downloaded the configured model: `ollama pull ...`",
+            message_type=SystemMessageType.ERROR,
+        )

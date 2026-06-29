@@ -1,6 +1,3 @@
-from langchain_core.documents import Document
-from langchain_postgres import PGVector
-from langchain_ollama import OllamaEmbeddings
 from langchain_community.document_loaders import (
     TextLoader,
     PyPDFLoader,
@@ -15,45 +12,33 @@ import os
 from typing import Final
 from pathlib import Path
 from langchain_chroma import Chroma
-from rag_app.backend.user_config_keys import ConfigKeys
-from rag_app.backend.rag import gen_model
-
-ROOT_PATH = Path(__file__).parent.parent.parent.parent
-
-# dir for the database
-DATA_DIR = ROOT_PATH / ".rag_data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+from rag_app.frontend.user_config_keys import ConfigKeys
+from rag_app.backend.config import config
 
 # connect to the database
-DB_CONNECTION_STRING: Final = f"sqlite:///{DATA_DIR / 'record_manager.sqlite'}"
+DB_CONNECTION_STRING: Final = f"sqlite:///{config.data_dir / 'record_manager.sqlite'}"
 COLLECTION_NAME: Final = "rag-files"
 
-DEFAULT_RES_DIR = ROOT_PATH / "documents"
 
-embed_model = "nomic-embed-text"
+def get_vector_db() -> Chroma:
+    """Always returns a fresh Chroma connection using the latest config."""
+    return Chroma(
+        embedding_function=config.embeddings,
+        collection_name=COLLECTION_NAME,
+        persist_directory=str(config.data_dir / "chroma_db"),
+    )
 
-# folder documents (later it will be entered by the user and saved in the db)
-resources_dir = DEFAULT_RES_DIR
-if not resources_dir.exists():
-    os.mkdir(resources_dir)
 
-# init local ollama model
-_embeddings_model: Final = OllamaEmbeddings(model=embed_model)
+def get_retriever():
+    """Builds a retriever dynamically from the fresh vector db."""
+    return get_vector_db().as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={"k": 5, "score_threshold": 0.5},
+    )
 
-# connect to the chroma db
-_vector_database: Final = Chroma(
-    embedding_function=_embeddings_model,
-    collection_name=COLLECTION_NAME,
-    persist_directory=str(DATA_DIR / "chroma_db"),
-)
 
 _text_splitter: Final = RecursiveCharacterTextSplitter(
     chunk_size=1500, chunk_overlap=100
-)
-
-retriever = _vector_database.as_retriever(
-    search_type="similarity_score_threshold",
-    search_kwargs={"k": 5, "score_threshold": 0.5},
 )
 
 # record manager to not save same files multiple times
@@ -72,23 +57,27 @@ user_config_table = Table(
     "user_config",
     metadata,
     Column("config_key", String, primary_key=True),
-    Column("config_value", String),
+    Column("config_value", String, nullable=False),
 )
 
 metadata.create_all(_engine)
 
 
-def add_resource(filename: str) -> bool:
-    file_path = resources_dir / filename
+def add_resource(filename: str) -> tuple[bool, str]:
+    file_path = config.resources_dir / filename
 
     print("File path is: " + str(file_path))
 
     # check if the file exists
     if not os.path.exists(file_path):
         print(f"File with name: {filename} is not in the documents folders")
-        return False
+        return (False, f"File at path: {file_path} doesn't exist")
 
-    # choose correct loader based on the extention
+    # check if it isnt a folder
+    if Path(file_path).is_dir():
+        return (False, "For adding directories use `/add-resources-dir`")
+
+    # choose correct loader based on the extension
     _, file_extension = os.path.splitext(file_path)
     file_extension = file_extension.lower()
 
@@ -100,20 +89,23 @@ def add_resource(filename: str) -> bool:
         loader = BSHTMLLoader(file_path)  # type: ignore
     else:
         print(f"File with extention {file_extension} is not supported")
-        return False
+        return (False, f"Unsupported file type: {file_extension}")
 
     raw_doc = loader.load()
 
     doc_chunks = _text_splitter.split_documents(raw_doc)
 
+    # check if the file wasnt empty
+    if len(doc_chunks) == 0:
+        return (False, "Empty file")
+
     print(f"Document splitted into {len(doc_chunks)} chunks")
 
-    # vector_database.add_documents(documents=doc_chunks)
     # add documents to the database with indexing
-    indexing_result = index(
+    index(
         doc_chunks,
         _record_manager,  # type: ignore
-        _vector_database,
+        get_vector_db(),
         cleanup="incremental",
         source_id_key="source",
         key_encoder="sha256",
@@ -121,15 +113,15 @@ def add_resource(filename: str) -> bool:
 
     # print(f"Indexing complete for '{filename}': {indexing_result}")
 
-    return True
+    return (True, f"{len(doc_chunks)} chunks")
 
 
 def remove_resource(filename: str) -> bool:
-    file_path = resources_dir / filename
+    file_path = config.resources_dir / filename
 
     # if the file is not at the root docs directory search recursively
     if not file_path.exists():
-        matches = list(resources_dir.rglob(filename))
+        matches = list(config.resources_dir.rglob(filename))
 
         if len(matches) > 1:
             print(f"Multiple files with name: {filename}")
@@ -147,7 +139,7 @@ def remove_resource(filename: str) -> bool:
         print(f"Not records found to delete, for file {filename}")
         return False
 
-    _vector_database.delete(keys_to_delete)
+    get_vector_db().delete(keys_to_delete)
     _record_manager.delete_keys(keys_to_delete)
 
     return True
@@ -156,7 +148,11 @@ def remove_resource(filename: str) -> bool:
 def remove_all_resources() -> None:
     all_keys = _record_manager.list_keys()
 
-    _vector_database.delete(all_keys)
+    if not all_keys:
+        print("Database already empty")
+        return
+
+    get_vector_db().delete(all_keys)
     _record_manager.delete_keys(all_keys)
 
 
@@ -172,7 +168,7 @@ def list_all_uploaded_files() -> list[str]:
 
         unique_files = []
         for row in result:
-            unique_files.append(str(Path(row[0]).relative_to(resources_dir)))
+            unique_files.append(str(Path(row[0]).relative_to(config.resources_dir)))
 
         return unique_files
 
@@ -181,7 +177,7 @@ def set_config(key: str, value: str) -> None:
     with _engine.connect() as conn:
         # upsert the value to the config table
         query = sqlite_insert(user_config_table).values(
-            config_key=key, config_value=value
+            config_key=key, config_value=value.strip()
         )
 
         query = query.on_conflict_do_update(
@@ -214,6 +210,30 @@ def get_configs(keys: list[str]) -> dict[str, str]:
         return {row[0]: row[1] for row in result}
 
 
+def save_configs(config_dict: dict[str, str]) -> bool:
+    try:
+        values_to_insert = [
+            {"config_key": key, "config_value": value.strip()}
+            for key, value in config_dict.items()
+        ]
+
+        with _engine.connect() as conn:
+            query = sqlite_insert(user_config_table).values(values_to_insert)
+
+            query = query.on_conflict_do_update(
+                index_elements=["config_key"],
+                set_=dict(config_value=query.excluded.config_value),
+            )
+
+            conn.execute(query)
+            conn.commit()
+
+        return True
+    except Exception as e:
+        print(f"Failed to save configs: {e}")
+        return False
+
+
 def load_all_config_values() -> None:
     global gen_model, embed_model, resources_dir
 
@@ -223,13 +243,13 @@ def load_all_config_values() -> None:
         ConfigKeys.EMBED_MODEL.value,
     ]
 
-    configs = get_configs(keys_to_fetch)
+    db_configs = get_configs(keys_to_fetch)
 
-    if ConfigKeys.RESOURCES_DIR.value in configs:
-        resources_dir = Path(configs[ConfigKeys.RESOURCES_DIR.value])
+    if ConfigKeys.RESOURCES_DIR.value in db_configs:
+        config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
 
-    if ConfigKeys.GEN_MODEL.value in configs:
-        gen_model = configs[ConfigKeys.GEN_MODEL.value]
+    if ConfigKeys.GEN_MODEL.value in db_configs:
+        config.gen_model = db_configs[ConfigKeys.GEN_MODEL.value]
 
-    if ConfigKeys.EMBED_MODEL.value in configs:
-        embed_model = configs[ConfigKeys.EMBED_MODEL.value]
+    if ConfigKeys.EMBED_MODEL.value in db_configs:
+        config.embed_model = db_configs[ConfigKeys.EMBED_MODEL.value]

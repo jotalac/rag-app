@@ -1,6 +1,5 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Static, Header
-from textual.containers import Vertical
 from rag_app.frontend.widgets.prompt_input import PromptInput
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from pathlib import Path
@@ -8,11 +7,13 @@ from rag_app.frontend.command_handler import Commands, handle_command
 from textual import work
 from textual.worker import Worker, get_current_worker
 from rag_app.backend.rag import generate_message
-from rag_app.frontend.widgets.chat_widgets import AIMessage, Role
+from rag_app.frontend.widgets.chat_widgets import AIMessage
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.config_modal import ConfigModal
-import rag_app.backend.db as db
+from rag_app.backend.db import get_configs
+from rag_app.frontend.user_config_keys import ConfigKeys
+from rag_app.backend.config import config
 
 
 class RagApp(App):
@@ -46,7 +47,25 @@ class RagApp(App):
     def on_mount(self):
         self.add_welcome_text()
         self.action_focus_input()
-        db.load_all_config_values()
+        self.load_all_config_values()
+
+    def load_all_config_values(self):
+        keys_to_fetch = [
+            ConfigKeys.RESOURCES_DIR.value,
+            ConfigKeys.GEN_MODEL.value,
+            ConfigKeys.EMBED_MODEL.value,
+        ]
+
+        configs = get_configs(keys_to_fetch)
+
+        if ConfigKeys.RESOURCES_DIR.value in configs:
+            config.resources_dir = Path(configs[ConfigKeys.RESOURCES_DIR.value])
+
+        if ConfigKeys.GEN_MODEL.value in configs:
+            config.gen_model = configs[ConfigKeys.GEN_MODEL.value]
+
+        if ConfigKeys.EMBED_MODEL.value in configs:
+            config.embed_model = configs[ConfigKeys.EMBED_MODEL.value]
 
     # ACTIONS
     def action_toggle_dark(self) -> None:
@@ -170,11 +189,7 @@ class RagApp(App):
                     break
         except Exception:
             # display error message
-            self.app.call_from_thread(
-                chat_text_box.add_system_message,
-                "**AI generation failed**  \n\n Make sure:\n- Ollama is running: `ollama serve`\n- You have downloaded the configured model: `ollama pull ...`",
-                SystemMessageType.ERROR,
-            )
+            self.app.call_from_thread(chat_text_box.add_ollama_error_message)
 
             self.app.call_from_thread(message_widget.remove)  # type: ignore
 
@@ -204,23 +219,27 @@ class RagApp(App):
 
         self.app.call_from_thread(mount_loader)
 
-        for status, message in handle_command(user_prompt):
+        try:
+            for status, message in handle_command(user_prompt):
 
-            def post_update(s=status, m=message):
-                cleanup()
-                chat_text_box.add_system_message(m, s)  # type: ignore
-                mount_loader()
+                def post_update(s=status, m=message):
+                    cleanup()
+                    chat_text_box.add_system_message(m, s)  # type: ignore
+                    mount_loader()
 
-            self.app.call_from_thread(post_update)
+                self.app.call_from_thread(post_update)
 
-            # check if the command wasn't canceled
-            if worker.is_cancelled:
-                self.app.call_from_thread(
-                    chat_text_box.add_system_message,
-                    "Command canceled!",
-                    SystemMessageType.INFO,
-                )
-                break
+                # check if the command wasn't canceled
+                if worker.is_cancelled:
+                    self.app.call_from_thread(
+                        chat_text_box.add_system_message,
+                        "Command canceled!",
+                        SystemMessageType.INFO,
+                    )
+                    break
+        except Exception as e:
+            print(e)
+            self.call_from_thread(chat_text_box.add_ollama_error_message)
 
         self.app.call_from_thread(cleanup)
 

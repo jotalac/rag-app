@@ -1,14 +1,9 @@
-from rag_app.backend import db
+from rag_app.backend.db import get_retriever
 from langchain_core.documents import Document
-from langchain_ollama import ChatOllama
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
-
-gen_model = "llama3.2:4b"
-
-_llm = ChatOllama(model=gen_model, temperature=0)
+from rag_app.backend.config import config
 
 # llm = ChatGoogleGenerativeAI(
 #     model="gemini-3.5-flash",
@@ -55,8 +50,6 @@ _contextualize_q_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-_question_rewriter = _contextualize_q_prompt | _llm | StrOutputParser()
-
 _qa_system_prompt = """You are a helpful assistant. Answer the user's question using ONLY the provided context below.
 If the context doesn't contain the answer, say "I cannot find that information in the uploaded documents. 
 Generate output formatted in markdown for nicer visuals."
@@ -72,8 +65,6 @@ _qa_prompt = ChatPromptTemplate.from_messages(
         ("human", "{input}"),
     ]
 )
-
-_answer_generator = _qa_prompt | _llm | StrOutputParser()
 
 
 def manage_history_window():
@@ -92,13 +83,16 @@ def format_docs(docs: list[Document]) -> str:
 
 
 def generate_message(user_prompt: str):
-    question_for_docs = _question_rewriter.invoke(
+    question_rewriter = _contextualize_q_prompt | config.llm | StrOutputParser()
+    answer_generator = _qa_prompt | config.llm | StrOutputParser()
+
+    question_for_docs = question_rewriter.invoke(
         {"chat_history": _chat_history, "input": user_prompt}
     )
 
     print(f"`Message for the docs: {question_for_docs}`\n")
 
-    docs = db.retriever.invoke(question_for_docs)
+    docs = get_retriever().invoke(question_for_docs)
     context_string = format_docs(docs)
 
     print(f"`Context string: {context_string}`\n")
@@ -115,7 +109,7 @@ def generate_message(user_prompt: str):
 
     full_answer = ""
 
-    for chunk in _answer_generator.stream(
+    for chunk in answer_generator.stream(
         {"context": context_string, "chat_history": _chat_history, "input": user_prompt}
     ):
         full_answer += chunk
