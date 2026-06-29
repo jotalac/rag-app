@@ -1,5 +1,6 @@
 # backend/command_handler.py
 from enum import Enum
+from rag_app.backend.config import config
 import rag_app.backend.db as db
 from rag_app.backend.rag import clear_chat_history
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
@@ -53,7 +54,7 @@ def _handle_add_resources_dir(args: list[str] | None):
         return
 
     dir_name = args[0]
-    target_dir = db.resources_dir / dir_name
+    target_dir = config.resources_dir / dir_name
 
     print(target_dir)
 
@@ -74,7 +75,7 @@ def _handle_add_resources_dir(args: list[str] | None):
     for current_file_index, file_path in enumerate(all_files):
 
         # get relative path
-        file_relative_path = str(file_path.relative_to(db.resources_dir))
+        file_relative_path = str(file_path.relative_to(config.resources_dir))
 
         yield (
             SystemMessageType.INFO,
