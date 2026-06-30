@@ -10,6 +10,7 @@ class Commands(Enum):
     ADD_RESOURCES = "/add-resources"
     ADD_RESOURCES_DIR = "/add-resources-dir"
     REMOVE_RESOURCES = "/remove-resources"
+    REMOVE_RESOURCES_DIR = "/remove-resources-dir"
     REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
     CLEAR_MEMORY = "/clear-memory"
@@ -104,6 +105,30 @@ def _handle_remove_resources(args: list[str] | None):
     yield (SystemMessageType.INFO, output_string)
 
 
+def _handle_remove_resources_dir(args: list[str] | None):
+    if not args:
+        yield (SystemMessageType.ERROR, "No directory name provided")
+        return
+    if len(args) > 1:
+        yield (SystemMessageType.ERROR, "You can remove only one directory at time.")
+        return
+
+    dir_name = args[0]
+
+    remove_result = db.remove_resources_dir(dir_name)
+
+    if remove_result:
+        yield (
+            SystemMessageType.INFO,
+            f"🗑️ All resources from directory: {dir_name} were removed",
+        )
+    else:
+        yield (
+            SystemMessageType.INFO,
+            f"❌ Failed to remove resources from directory: {dir_name}",
+        )
+
+
 def _handle_remove_resources_all(args: list[str] | None):
     db.remove_all_resources()
     yield (SystemMessageType.INFO, "🗑️ All resources were removed")
@@ -129,7 +154,7 @@ Ask questions about your resources.
         
 ## Available Commands:
 
-_*all file paths are relative to the `resources directory`_
+_*all file paths are relative to the **resources directory**_
 
 
 
@@ -146,6 +171,10 @@ Recursively embeds all files within a specific folder.
 
 **`/remove-resources [file1] [file2]...`**
 Deletes specific files from the database.
+
+
+**`/remove-resources-dir [folder]...`**
+Recursively deletes all files within a specific folder.
 
 
 **`/remove-resources-all`**
@@ -174,6 +203,7 @@ COMMAND_REGISTRY = {
     Commands.ADD_RESOURCES.value: _handle_add_resources,
     Commands.ADD_RESOURCES_DIR.value: _handle_add_resources_dir,
     Commands.REMOVE_RESOURCES.value: _handle_remove_resources,
+    Commands.REMOVE_RESOURCES_DIR.value: _handle_remove_resources_dir,
     Commands.REMOVE_RESOURCES_ALL.value: _handle_remove_resources_all,
     Commands.LIST_RESOURCES.value: _handle_list_resources,
     Commands.HELP.value: _handle_help,

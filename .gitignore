@@ -11,7 +11,7 @@ wheels/
 .venv
 env/
 
-documents/*
+documents*/
 .rag_data
 
 .mypy_cache/

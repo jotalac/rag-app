@@ -119,24 +119,37 @@ def add_resource(filename: str) -> tuple[bool, str]:
 def remove_resource(filename: str) -> bool:
     file_path = config.resources_dir / filename
 
-    # if the file is not at the root docs directory search recursively
-    if not file_path.exists():
-        matches = list(config.resources_dir.rglob(filename))
-
-        if len(matches) > 1:
-            print(f"Multiple files with name: {filename}")
-            return False
-
-        if not matches:
-            print(f"Not file named: {filename}")
-            return False
-
-        file_path = matches[0]
-
     keys_to_delete = _record_manager.list_keys(group_ids=[str(file_path)])
 
     if not keys_to_delete:
         print(f"Not records found to delete, for file {filename}")
+        return False
+
+    get_vector_db().delete(keys_to_delete)
+    _record_manager.delete_keys(keys_to_delete)
+
+    return True
+
+
+def remove_resources_dir(subdir_name: str) -> bool:
+    target_dir = str(config.resources_dir / subdir_name)
+
+    if not target_dir.endswith(os.sep):
+        target_dir += os.sep
+
+    with _engine.connect() as conn:
+        query = text("""
+            SELECT key
+            FROM upsertion_record
+            WHERE group_id LIKE :target_dir
+        """)
+
+        result = conn.execute(query, {"target_dir": f"{target_dir}%"})
+
+        keys_to_delete = [row[0] for row in result]
+
+    if not keys_to_delete:
+        print("No record to delete")
         return False
 
     get_vector_db().delete(keys_to_delete)
@@ -171,6 +184,23 @@ def list_all_uploaded_files() -> list[str]:
             unique_files.append(str(Path(row[0]).relative_to(config.resources_dir)))
 
         return unique_files
+
+
+# def find_keys_for_file(file_path: str) -> list[str]:
+#     query = text(f"""
+#                 SELECT key
+#                 FROM upsertion_record
+#                 WHERE group_id IS '{file_path}'
+#                 """)
+
+#     with _engine.connect() as conn:
+#         result = conn.execute(query)
+
+#         keys = []
+#         for row in result:
+#             keys.append(row[0])
+
+#         return keys
 
 
 def set_config(key: str, value: str) -> None:
