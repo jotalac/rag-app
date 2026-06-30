@@ -12,7 +12,7 @@ import os
 from typing import Final
 from pathlib import Path
 from langchain_chroma import Chroma
-from rag_app.frontend.user_config_keys import ConfigKeys
+from rag_app.backend.config import ConfigKeys
 from rag_app.backend.config import config
 
 # connect to the database

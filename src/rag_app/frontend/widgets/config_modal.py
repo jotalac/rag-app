@@ -1,11 +1,10 @@
 from textual.app import ComposeResult
-from textual.widgets import Switch
 from textual.screen import ModalScreen
 from textual.containers import Vertical
-from textual.widgets import Switch, Label, Input, Select, Button
-from textual.containers import Vertical, Horizontal
+from textual.widgets import Label, Input, Button
+from textual.containers import Horizontal
 from textual import on
-from rag_app.frontend.user_config_keys import ConfigKeys
+from rag_app.backend.config import ConfigKeys
 from pathlib import Path
 from textual.validation import Function, Length
 from rag_app.backend.db import (

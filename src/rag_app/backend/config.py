@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from enum import Enum
-from rag_app.backend.db import get_configs
 
 
 class ConfigKeys(Enum):
@@ -59,6 +58,8 @@ class AppConfig:
         self.embeddings = OllamaEmbeddings(model=self._embed_model)
 
     def init_from_db(self) -> None:
+        from rag_app.backend.db import get_configs
+
         keys_to_fetch = [
             ConfigKeys.RESOURCES_DIR.value,
             ConfigKeys.GEN_MODEL.value,
