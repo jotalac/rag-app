@@ -12,8 +12,6 @@ from rag_app.frontend.widgets.chat_widgets import AIMessage
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.config_modal import ConfigModal
-from rag_app.backend.db import get_configs
-from rag_app.frontend.user_config_keys import ConfigKeys
 from rag_app.backend.config import config
 
 
@@ -51,22 +49,7 @@ class RagApp(App):
         self.load_all_config_values()
 
     def load_all_config_values(self):
-        keys_to_fetch = [
-            ConfigKeys.RESOURCES_DIR.value,
-            ConfigKeys.GEN_MODEL.value,
-            ConfigKeys.EMBED_MODEL.value,
-        ]
-
-        configs = get_configs(keys_to_fetch)
-
-        if ConfigKeys.RESOURCES_DIR.value in configs:
-            config.resources_dir = Path(configs[ConfigKeys.RESOURCES_DIR.value])
-
-        if ConfigKeys.GEN_MODEL.value in configs:
-            config.gen_model = configs[ConfigKeys.GEN_MODEL.value]
-
-        if ConfigKeys.EMBED_MODEL.value in configs:
-            config.embed_model = configs[ConfigKeys.EMBED_MODEL.value]
+        config.init_from_db()
 
     # ACTIONS
     def action_toggle_dark(self) -> None:

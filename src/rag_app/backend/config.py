@@ -1,6 +1,14 @@
 import os
 from pathlib import Path
 from langchain_ollama import ChatOllama, OllamaEmbeddings
+from enum import Enum
+from rag_app.backend.db import get_configs
+
+
+class ConfigKeys(Enum):
+    RESOURCES_DIR = "resources_dir"
+    GEN_MODEL = "generation_model"
+    EMBED_MODEL = "embedding_model"
 
 
 class AppConfig:
@@ -49,6 +57,24 @@ class AppConfig:
     def embed_model(self, new_model: str) -> None:
         self._embed_model = new_model
         self.embeddings = OllamaEmbeddings(model=self._embed_model)
+
+    def init_from_db(self) -> None:
+        keys_to_fetch = [
+            ConfigKeys.RESOURCES_DIR.value,
+            ConfigKeys.GEN_MODEL.value,
+            ConfigKeys.EMBED_MODEL.value,
+        ]
+
+        configs = get_configs(keys_to_fetch)
+
+        if ConfigKeys.RESOURCES_DIR.value in configs:
+            config.resources_dir = Path(configs[ConfigKeys.RESOURCES_DIR.value])
+
+        if ConfigKeys.GEN_MODEL.value in configs:
+            config.gen_model = configs[ConfigKeys.GEN_MODEL.value]
+
+        if ConfigKeys.EMBED_MODEL.value in configs:
+            config.embed_model = configs[ConfigKeys.EMBED_MODEL.value]
 
 
 # create singleton
