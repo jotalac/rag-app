@@ -59,19 +59,30 @@ class ChatText(VerticalScroll):
     def add_ai_message(self, message: str) -> None:
         new_msg_widget = AIMessage(message)
         self.mount(new_msg_widget)
-        self.scroll_end(animate=False)
+
+        self.remove_old_messages()
 
     def add_user_message(self, message: str) -> None:
         new_msg_widget = UserMessage(message)
         self.mount(new_msg_widget)
-        self.scroll_end(animate=False)
+
+        self.remove_old_messages()
 
     def add_system_message(self, message: str, message_type: SystemMessageType) -> None:
         self.mount(SystemMessage(message, message_type))
-        self.scroll_end(animate=False)
+
+        self.remove_old_messages()
 
     def add_ollama_error_message(self) -> None:
         self.add_system_message(
             message="**Ollama error**  \n\n Make sure:\n- Ollama is running: `ollama serve`\n- You have downloaded the configured model: `ollama pull ...`",
             message_type=SystemMessageType.ERROR,
         )
+
+        self.remove_old_messages()
+
+    def remove_old_messages(self):
+        if len(self.children) > 30:
+            self.children[0].remove()
+
+        self.scroll_end(animate=False)

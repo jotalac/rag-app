@@ -25,7 +25,7 @@ class RagApp(App):
         ("/", "focus_input", "Focus input"),
         ("escape", "unfocus_input", "Unfocus input"),
         ("ctrl+l", "clear_chat", "Clear chat"),
-        ("ctrl+c", "cancel_ai_generation", "Cancel AI generation"),
+        ("ctrl+c", "cancel_execution", "Cancel system execution"),
         ("c", "open_config", "Open Config"),
     ]
 
@@ -80,12 +80,13 @@ class RagApp(App):
     def action_unfocus_input(self) -> None:
         self.set_focus(None)
 
-    def action_cancel_ai_generation(self) -> None:
+    def action_cancel_execution(self) -> None:
         if (
             self.is_working
             and self.active_worker
             and not self.active_worker.is_finished
         ):
+            print("work is active")
             self.active_worker.cancel()
             self.is_working = False
 
@@ -164,23 +165,25 @@ class RagApp(App):
             self.is_working = True
             self.active_ai_widget = ai_message_widget
 
-            self.active_worker = self.fetch_ai_response(
-                user_prompt, chat_text_box, ai_message_widget
-            )
+            self.active_worker = self.fetch_ai_response(user_prompt, chat_text_box)
 
     @work(thread=True)
-    def fetch_ai_response(
-        self, user_prompt: str, chat_text_box: ChatText, message_widget: AIMessage
-    ) -> None:
+    def fetch_ai_response(self, user_prompt: str, chat_text_box: ChatText) -> None:
         worker = get_current_worker()
         acc_response = ""
+
+        ai_widget = self.active_ai_widget
+
+        if not ai_widget:
+            print("No active AI widget")
+            raise ValueError("No active AI widget")
 
         try:
             # display the text as it is being generated
             for chunk in generate_message(user_prompt):
                 # append the new generated chunk
                 acc_response += chunk
-                self.app.call_from_thread(message_widget.update_text, acc_response)
+                self.app.call_from_thread(ai_widget.update_text, acc_response)
 
                 self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
 
@@ -191,7 +194,7 @@ class RagApp(App):
             # display error message
             self.app.call_from_thread(chat_text_box.add_ollama_error_message)
 
-            self.app.call_from_thread(message_widget.remove)  # type: ignore
+            self.app.call_from_thread(ai_widget.remove)  # type: ignore
 
         if not worker.is_cancelled:
             self.is_working = False

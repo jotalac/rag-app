@@ -83,7 +83,7 @@ def add_resource(filename: str) -> tuple[bool, str]:
 
     if file_extension == ".pdf":
         loader = PyPDFLoader(file_path)
-    elif file_extension == ".txt":
+    elif file_extension in [".txt", ".md"]:
         loader = TextLoader(file_path)  # type: ignore
     elif file_extension == ".html":
         loader = BSHTMLLoader(file_path)  # type: ignore
@@ -184,23 +184,6 @@ def list_all_uploaded_files() -> list[str]:
             unique_files.append(str(Path(row[0]).relative_to(config.resources_dir)))
 
         return unique_files
-
-
-# def find_keys_for_file(file_path: str) -> list[str]:
-#     query = text(f"""
-#                 SELECT key
-#                 FROM upsertion_record
-#                 WHERE group_id IS '{file_path}'
-#                 """)
-
-#     with _engine.connect() as conn:
-#         result = conn.execute(query)
-
-#         keys = []
-#         for row in result:
-#             keys.append(row[0])
-
-#         return keys
 
 
 def set_config(key: str, value: str) -> None:

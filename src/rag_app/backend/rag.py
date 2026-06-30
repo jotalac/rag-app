@@ -104,7 +104,7 @@ def generate_message(user_prompt: str):
         # so generate the best answer you can without the resouces,
         # or just answer that you dont know.
         # """
-        yield "No relatable data available."
+        yield "I couldn't find any specific information in your documents related to that query"
         return
 
     full_answer = ""
