@@ -1,7 +1,10 @@
 from textual.app import ComposeResult
+from textual.events import Mount
 from textual.widgets import Markdown, Static
-from textual.containers import VerticalScroll, Horizontal
+from textual.containers import VerticalScroll, Vertical, Horizontal
 from enum import Enum
+from pathlib import Path
+from rag_app.backend.config import config
 
 
 class Role(Enum):
@@ -50,6 +53,49 @@ class SystemMessage(Horizontal):
     def compose(self) -> ComposeResult:
         formatted_text = f"**{self.message_type.value}**: \n\n{self.message}"
         yield Markdown(formatted_text, classes="message-bubble")
+
+
+class WelcomeMessage(Vertical):
+    def __init__(self, **kwargs):
+        super().__init__(id="welcome-message-cont", **kwargs)
+
+    def on_mount(self) -> None:
+        self.add_welcome_ascii_art()
+        self.add_welcome_message()
+
+    def add_welcome_ascii_art(self):
+        # add image
+        current_dir = Path(__file__).parent.parent.parent
+        file_path = current_dir / "resources" / "welcome.txt"
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                welcome_text = f.read()
+
+            welcome_label = Static(welcome_text, id="welcome-art")
+
+            self.mount(welcome_label)
+
+        except FileNotFoundError as e:
+            print(e)
+            error_label = Static("Welcome! (error loading welcome art)")
+            self.mount(error_label)
+
+    def add_welcome_message(self):
+        # We use a Markdown table to get that clean, key-value aesthetic
+        welcome_md = f"""
+# Rag App - generation with context
+
+| Configuration | Current Value |
+| :--- | :--- |
+| **Generation Model** | `{config.gen_model}` |
+| **Embedding Model** | `{config.embed_model}` |
+| **Resources Directory** | `{config.resources_dir}` |
+
+*Type `/help` to see available commands or simply ask a question.*
+        """
+        message_container = Markdown(welcome_md, id="welcome-text")
+        self.mount(message_container)
 
 
 class ChatText(VerticalScroll):

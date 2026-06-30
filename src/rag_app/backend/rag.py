@@ -54,6 +54,9 @@ _qa_system_prompt = """You are a helpful assistant. Answer the user's question u
 If the context doesn't contain the answer, say "I cannot find that information in the uploaded documents. 
 Generate output formatted in markdown for nicer visuals."
 
+IF THINKING is present output the thinking tokens normally like output for the model
+
+
 Context:
 {context}"""
 
@@ -112,6 +115,9 @@ async def generate_message(user_prompt: str):
     async for chunk in answer_generator.astream(
         {"context": context_string, "chat_history": _chat_history, "input": user_prompt}
     ):
+        if not chunk:
+            return
+
         full_answer += chunk
         yield chunk
 

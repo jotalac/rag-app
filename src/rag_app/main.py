@@ -5,7 +5,7 @@ from rag_app.frontend.widgets.chat_widgets import ChatText
 from pathlib import Path
 from rag_app.frontend.input_router import route_user_input
 from rag_app.frontend.widgets.chat_widgets import AIMessage
-from rag_app.frontend.widgets.chat_widgets import SystemMessageType
+from rag_app.frontend.widgets.chat_widgets import SystemMessageType, WelcomeMessage
 from rag_app.frontend.widgets.config_modal import ConfigModal
 from rag_app.backend.config import config
 from rag_app.frontend.app_workers import AppWorkers
@@ -94,21 +94,7 @@ class RagApp(AppWorkers):
         self.push_screen(ConfigModal())
 
     def add_welcome_text(self) -> None:
-        current_dir = Path(__file__).parent
-        file_path = current_dir / "resources" / "welcome.txt"
-
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                welcome_text = f.read()
-
-            welcome_label = Static(welcome_text, id="welcome-art")
-
-            self.query_one(ChatText).mount(welcome_label)
-
-        except FileNotFoundError:
-            print("File not found")
-            error_label = Static("Welcome! (error loading welcome art)")
-            self.query_one(ChatText).mount(error_label)
+        self.query_one(ChatText).mount(WelcomeMessage())
 
     def on_prompt_input_prompt_submitted(
         self, event: PromptInput.PromptSubmitted

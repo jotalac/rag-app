@@ -10,6 +10,7 @@ from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.chat_widgets import AIMessage
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from textual.app import App
+import time
 
 if TYPE_CHECKING:
     from rag_app.main import RagApp
@@ -32,12 +33,18 @@ class AppWorkers(App):
             print("No active AI widget")
             raise ValueError("No active AI widget")
 
+        last_update_time = 0.0
+
         try:
             # display the text as it is being generated
             async for chunk in generate_message(user_prompt):
                 # append the new generated chunk
                 acc_response += chunk
-                ai_widget.update_text(acc_response)
+
+                current_time = time.time()
+                if (current_time - last_update_time) > 0.25:
+                    ai_widget.update_text(acc_response)
+                    last_update_time = current_time
 
                 chat_text_box.scroll_end(animate=False)
 

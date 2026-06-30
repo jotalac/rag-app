@@ -1,10 +1,3 @@
-#welcome-art{
-    content-align: center middle;
-    text-align: center;
-    margin: 1 0;
-    color: $primary;
-}
-
 #chat-text {
     height: 1fr;
     padding: 1 2;
@@ -68,5 +61,33 @@
 AsciiSpinner {
     height: 1;
     margin: 1 2;
+    color: $text-muted;
+}
+
+/* welcome messages */
+#welcome-message-cont {
+    width: 100%;
+    height: auto;
+    margin: 2 0;
+    align: center middle;
+}
+
+#welcome-art {
+    content-align: center middle;
+    width: 100%;
+    margin-bottom: 1;
+    color: $primary; 
+}
+
+#welcome-text {
+    width: auto;
+    max-width: 100%;
+    margin: 1;
+    background: transparent;
+    border: double $primary;
+    padding: 1 4;
+}
+
+#welcome-text Markdown {
     color: $text-muted;
 }
