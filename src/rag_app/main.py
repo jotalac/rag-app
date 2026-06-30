@@ -3,6 +3,7 @@ from textual.widgets import Footer, Static, Header
 from rag_app.frontend.widgets.prompt_input import PromptInput
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from pathlib import Path
+import asyncio
 from rag_app.frontend.command_handler import Commands, handle_command
 from textual import work
 from textual.worker import Worker, get_current_worker
@@ -86,7 +87,6 @@ class RagApp(App):
             and self.active_worker
             and not self.active_worker.is_finished
         ):
-            print("work is active")
             self.active_worker.cancel()
             self.is_working = False
 
@@ -167,8 +167,10 @@ class RagApp(App):
 
             self.active_worker = self.fetch_ai_response(user_prompt, chat_text_box)
 
-    @work(thread=True)
-    def fetch_ai_response(self, user_prompt: str, chat_text_box: ChatText) -> None:
+    @work
+    async def fetch_ai_response(
+        self, user_prompt: str, chat_text_box: ChatText
+    ) -> None:
         worker = get_current_worker()
         acc_response = ""
 
@@ -180,21 +182,20 @@ class RagApp(App):
 
         try:
             # display the text as it is being generated
-            for chunk in generate_message(user_prompt):
+            async for chunk in generate_message(user_prompt):
                 # append the new generated chunk
                 acc_response += chunk
-                self.app.call_from_thread(ai_widget.update_text, acc_response)
+                ai_widget.update_text(acc_response)
 
-                self.app.call_from_thread(chat_text_box.scroll_end, animate=False)
+                chat_text_box.scroll_end(animate=False)
 
-                # check if the generation wasn't canceled
-                if worker.is_cancelled:
-                    break
+        except asyncio.CancelledError:
+            pass
         except Exception:
             # display error message
-            self.app.call_from_thread(chat_text_box.add_ollama_error_message)
+            chat_text_box.add_ollama_error_message()
 
-            self.app.call_from_thread(ai_widget.remove)  # type: ignore
+            ai_widget.remove()  # type: ignore
 
         if not worker.is_cancelled:
             self.is_working = False

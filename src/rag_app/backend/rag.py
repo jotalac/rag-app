@@ -82,17 +82,17 @@ def format_docs(docs: list[Document]) -> str:
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-def generate_message(user_prompt: str):
+async def generate_message(user_prompt: str):
     question_rewriter = _contextualize_q_prompt | config.llm | StrOutputParser()
     answer_generator = _qa_prompt | config.llm | StrOutputParser()
 
-    question_for_docs = question_rewriter.invoke(
+    question_for_docs = await question_rewriter.ainvoke(
         {"chat_history": _chat_history, "input": user_prompt}
     )
 
     print(f"`Message for the docs: {question_for_docs}`\n")
 
-    docs = get_retriever().invoke(question_for_docs)
+    docs = await get_retriever().ainvoke(question_for_docs)
     context_string = format_docs(docs)
 
     print(f"`Context string: {context_string}`\n")
@@ -109,7 +109,7 @@ def generate_message(user_prompt: str):
 
     full_answer = ""
 
-    for chunk in answer_generator.stream(
+    async for chunk in answer_generator.astream(
         {"context": context_string, "chat_history": _chat_history, "input": user_prompt}
     ):
         full_answer += chunk
