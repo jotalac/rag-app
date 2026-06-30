@@ -88,13 +88,18 @@ class RagApp(App):
             and not self.active_worker.is_finished
         ):
             self.active_worker.cancel()
-            self.is_working = False
 
             if self.active_ai_widget:
                 self.active_ai_widget.update_text(
-                    self.active_ai_widget.message + "\n\n" + "[Generation canceled]"
+                    self.active_ai_widget.message + "\n\n" + "**[Generation canceled]**"
                 )
                 self.active_ai_widget = None
+            else:
+                chat_text_box = self.query_one(ChatText)
+                chat_text_box.add_system_message(
+                    "Canceling... waiting for current operation to finish.",
+                    SystemMessageType.INFO,
+                )
 
     async def action_clear_chat(self) -> None:
         print(self.is_working)
@@ -153,6 +158,7 @@ class RagApp(App):
                 return
 
             self.is_working = True
+            self.active_ai_widget = None
 
             self.active_worker = self.run_thread_command(user_prompt, chat_text_box)
             # chat_text_box.add_system_message(message=message, message_type=status)
@@ -197,8 +203,8 @@ class RagApp(App):
 
             ai_widget.remove()  # type: ignore
 
-        if not worker.is_cancelled:
-            self.is_working = False
+        self.is_working = False
+        self.active_ai_widget = None
 
     @work(thread=True)
     def run_thread_command(self, user_prompt: str, chat_text_box: ChatText) -> None:
@@ -247,8 +253,7 @@ class RagApp(App):
 
         self.app.call_from_thread(cleanup)
 
-        if not worker.is_cancelled:
-            self.is_working = False
+        self.is_working = False
 
 
 def run_cli():

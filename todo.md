@@ -1,6 +1,7 @@
 - add resources from url
 - add resources image, audio, ...
 
+
 # errors
 - ctrl+c doenst cancel the generation
 
@@ -15,3 +16,6 @@
 
 # benefits
 - smaller models start making up BS when they dont know (and they dont know pretty often)
+
+# info 
+- first generation is always slow because ollama need to load the model (also after changing the model in the config)

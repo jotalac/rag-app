@@ -87,7 +87,7 @@ def _handle_add_resources_dir(args: list[str] | None):
 
         yield (
             SystemMessageType.INFO,
-            f"{current_file_index + 1 }/{file_count} - {add_result[1]}",
+            f"[{current_file_index + 1 }/{file_count}] - {add_result[1]}",
         )
 
     yield (SystemMessageType.INFO, "Directory processing complete!")
@@ -120,12 +120,12 @@ def _handle_remove_resources_dir(args: list[str] | None):
     if remove_result:
         yield (
             SystemMessageType.INFO,
-            f"🗑️ All resources from directory: {dir_name} were removed",
+            f"🗑️ All resources from directory: **{dir_name}** were removed",
         )
     else:
         yield (
             SystemMessageType.INFO,
-            f"❌ Failed to remove resources from directory: {dir_name}",
+            f"❌ Failed to remove resources from directory: **{dir_name}**",
         )
 
 
