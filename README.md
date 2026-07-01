@@ -9,6 +9,9 @@
 
 A pure RAG pipeline with TUI, designed to work well with smaller local LLMs (via Ollama). 
 
+[rag-app-readme.webm](https://github.com/user-attachments/assets/346f528d-992a-4867-b6f1-4aa117664d27)
+
+
 ## Overview
 
 - This project is a streamlined RAG application.
@@ -19,7 +22,7 @@ A pure RAG pipeline with TUI, designed to work well with smaller local LLMs (via
 ## Requirements
 
 - **Python:** 3.14 or newer.
-- **Package Manager:** [uv](https://github.com/astral-sh/uv) (recommended for dependency management).
+- **Package Manager:** [uv](https://github.com/astral-sh/uv)
 - **LLM Engine:** [Ollama](https://github.com/ollama/ollama) installed and running locally. 
   - Make sure Ollama is running (`ollama serve`). Ideally, configure it to autostart on boot.
   - You need to download an LLM (e.g., `ollama pull llama3.2:3b`) and an embedding model (e.g., `ollama pull nomic-embed-text`).
@@ -31,7 +34,7 @@ A pure RAG pipeline with TUI, designed to work well with smaller local LLMs (via
 uv tool install git+https://github.com/jotalac/rag-app.git
 ```
 
-### Alternative
+### Manual clone (alternative)
 1. **Clone the repository:**
    ```bash
    git clone git@github.com:jotalac/rag-app.git
@@ -46,7 +49,7 @@ uv tool install git+https://github.com/jotalac/rag-app.git
 ### Updating the App
 
 **If you installed globally via Git:**
-Simply run the upgrade command:
+Run the upgrade command:
 ```bash
 uv tool upgrade rag-app
 ```
@@ -68,19 +71,19 @@ rag-app
 > **Note on Cold Starts:** The first generation query is always slow because Ollama needs to load the model into memory. This delay also occurs anytime you change the model in the configuration.
 
 - In the app, run `/help` to see all available options.
-- `ctrl+p` open the default menu, where you can change theme or do other actions
+- `ctrl+p` opens the default menu, where you can change theme or do other actions
 
 ### Adding resources (in TUI)
 
 - Create a folder anywhere on your device where all your resources will be stored.
 - In the TUI config dialog (`/config`), set the *resources directory* to your created folder.
 - Run `/add-resources file1 file2 ...` or `/add-resources-dir dir_name` to embed the files into the vector database.
-- After the files are embedded, you can safely delete them from the directory.
+- After the files are embedded, you can safely delete them from the resources directory.
 
 ### Asking about resources
 - Type your prompt in the input, and the app will automatically look at the uploaded resources.
 - Smaller models might struggle if the resources are not in English.
-- If no relevant data is retrieved from the vector database, generation won't start, and you will see a warning message.
+- If no relevant data is retrieved from the vector database, generation won't start, and you will see a info message.
 
 ## Current Limitations
 
@@ -89,9 +92,9 @@ rag-app
 - **Thinking Models:** Thinking output is not currently visible.
 
 
-## Roadmap & To-do
+## To-do
 
-- Add support for importing resources directly from URLs.
+- Add support for importing resources directly from web URLs.
 - Add support for embedding and querying images, audio, and other media resources.
 - Add support for cloud LLM providers.
 - Adding resources from any folder (not only from one resources directory)
