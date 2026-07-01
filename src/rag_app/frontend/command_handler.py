@@ -4,6 +4,7 @@ from rag_app.backend.config import config
 import rag_app.backend.db as db
 from rag_app.backend.rag import clear_chat_history
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
+import shlex
 
 
 class Commands(Enum):
@@ -212,7 +213,17 @@ COMMAND_REGISTRY = {
 
 
 def handle_command(user_input: str):
-    parts = user_input.split()
+    try:
+        parts = shlex.split(user_input)
+
+    except ValueError as e:
+        print(f"invalid command syntax {e}")
+        yield (SystemMessageType.ERROR, "Invalid command syntax")
+        return
+
+    if not parts:
+        return
+
     command = parts[0]
     args = parts[1::] if len(parts) > 1 else None
 
