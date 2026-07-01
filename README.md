@@ -20,8 +20,8 @@ A pure RAG pipeline with TUI, designed to work well with smaller local LLMs (via
 
 - **Python:** 3.14 or newer.
 - **Package Manager:** [uv](https://github.com/astral-sh/uv) (recommended for dependency management).
-- **LLM Engine:** [Ollama](https://docs.ollama.com/linux) installed and running locally. 
-  - Make sure Ollama is running (e.g., `ollama serve`). Ideally, configure it to autostart on boot.
+- **LLM Engine:** [Ollama](https://github.com/ollama/ollama) installed and running locally. 
+  - Make sure Ollama is running (`ollama serve`). Ideally, configure it to autostart on boot.
   - You need to download an LLM (e.g., `ollama pull llama3.2:3b`) and an embedding model (e.g., `ollama pull nomic-embed-text`).
   - Run `ollama ls` to verify that the models are downloaded.
 
@@ -34,7 +34,7 @@ uv tool install git+https://github.com/jotalac/rag-app.git
 ### Alternative
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/jotalac/rag-app.git
+   git clone git@github.com:jotalac/rag-app.git
    cd rag-app
    ```
 

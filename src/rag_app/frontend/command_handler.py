@@ -162,6 +162,8 @@ _*all file paths are relative to the **resources directory**_
 **`/config`**
 Open application config.
 
+### Adding resources:
+
 **`/add-resources [file1] [file2]...`**
 Embeds specific files into the database.
 
@@ -169,6 +171,7 @@ Embeds specific files into the database.
 **`/add-resources-dir [folder]`**
 Recursively embeds all files within a specific folder.
 
+### Removing resources:
 
 **`/remove-resources [file1] [file2]...`**
 Deletes specific files from the database.
@@ -181,6 +184,7 @@ Recursively deletes all files within a specific folder.
 **`/remove-resources-all`**
 Wipes the entire vector database.
 
+### Other:
 
 **`/list-resources`**
 Displays a list of all currently indexed files.
