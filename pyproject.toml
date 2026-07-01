@@ -25,3 +25,10 @@ rag-app = "rag_app.main:run_cli"
 
 [tool.uv]
 package = true
+
+[tool.hatch.build.targets.wheel]
+include=[
+    "src/rag_app/**/*.tcss",
+    "src/rag_app/**/*.txt",
+]
+

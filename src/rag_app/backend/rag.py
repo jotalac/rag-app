@@ -54,8 +54,6 @@ _qa_system_prompt = """You are a helpful assistant. Answer the user's question u
 If the context doesn't contain the answer, say "I cannot find that information in the uploaded documents. 
 Generate output formatted in markdown for nicer visuals."
 
-IF THINKING is present output the thinking tokens normally like output for the model
-
 
 Context:
 {context}"""
