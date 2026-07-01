@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from platformdirs import user_data_path
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from enum import Enum
 
@@ -14,7 +15,7 @@ class AppConfig:
     def __init__(self):
         self.user_home_path = Path.home()
 
-        self.data_dir = self.user_home_path / ".rag-app-data"
+        self.data_dir = user_data_path("rag-app")
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
         self._resources_dir = self.user_home_path / "rag-app-documents"
