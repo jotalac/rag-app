@@ -1,6 +1,6 @@
 # RAG App
 
-[![GitHub Release](https://img.shields.io/github/v/release/talacjos/rag-app?style=flat-square)](https://github.com/jotalac/rag-app/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/jotalac/rag-app?style=flat-square)](https://github.com/jotalac/rag-app/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)](https://github.com/python/cpython)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-FF4F00?style=flat&logo=databricks&logoColor=white)](https://github.com/chroma-core/chroma)
 [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=langchain&logoColor=white)](https://github.com/langchain-ai/langchain)
