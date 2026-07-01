@@ -12,14 +12,13 @@ class ConfigKeys(Enum):
 
 class AppConfig:
     def __init__(self):
-        self.root_path = Path(__file__).parent.parent.parent.parent
+        self.user_home_path = Path.home()
 
-        self.data_dir = self.root_path / ".rag_data"
+        self.data_dir = self.user_home_path / ".rag-app-data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        self._resources_dir = self.root_path / "documents"
-        if not self._resources_dir.exists():
-            self._resources_dir.mkdir(parents=True, exist_ok=True)
+        self._resources_dir = self.user_home_path / "rag-app-documents"
+        self._resources_dir.mkdir(parents=True, exist_ok=True)
 
         self._gen_model = "llama3.2:3b"
         self._embed_model = "nomic-embed-text"
