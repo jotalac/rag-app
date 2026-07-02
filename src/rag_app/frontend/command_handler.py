@@ -16,6 +16,7 @@ class Commands(Enum):
     REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
     CLEAR_MEMORY = "/clear-memory"
+    WORKSPACE = "/workspace"
     CONFIG = "/config"
     HELP = "/help"
     EXIT = "/exit"

@@ -4,12 +4,12 @@ ConfigModal {
 }
 
 #config-dialog {
-    width: 70%;
+    width: 90%;
     max-width: 110;
     height: auto;
     padding: 1 2;
     background: $surface;
-    border: thick $primary;
+    border: double $primary;
 }
 
 .config-title {

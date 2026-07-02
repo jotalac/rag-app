@@ -92,7 +92,7 @@ class AppWorkers(App):
                     cleanup()
 
                     if isinstance(message, Widget):
-                        bubble = Vertical(m, classes="message-bubble")
+                        bubble = Vertical(m, classes="message-bubble")  # type: ignore
                         row = Vertical(bubble, classes="message-row info")
                         chat_text_box.mount(row)
                     else:
