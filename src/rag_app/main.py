@@ -10,6 +10,7 @@ from rag_app.frontend.widgets.config_modal import ConfigModal
 from rag_app.backend.config import config
 from rag_app.frontend.app_workers import AppWorkers
 from textual.worker import Worker, get_current_worker
+from rag_app.frontend.widgets.resources_tree_widget import ResourcesTreeWidget
 
 
 class RagApp(AppWorkers):

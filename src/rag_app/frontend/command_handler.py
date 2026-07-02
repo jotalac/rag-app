@@ -4,6 +4,7 @@ from rag_app.backend.config import config
 import rag_app.backend.db as db
 from rag_app.backend.rag import clear_chat_history
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
+from rag_app.frontend.widgets.resources_tree_widget import ResourcesTreeWidget
 import shlex
 
 
@@ -140,7 +141,9 @@ def _handle_list_resources(args: list[str] | None):
     if not all_resources:
         yield (SystemMessageType.INFO, "No documents uploaded")
     else:
-        yield (SystemMessageType.INFO, "\n".join([f"- 📁 {r}" for r in all_resources]))
+        tree_widget = ResourcesTreeWidget(all_resources, classes="resource-tree")
+        yield (SystemMessageType.INFO, tree_widget)
+        # yield (SystemMessageType.INFO, "\n".join([f"- 📁 {r}" for r in all_resources]))
 
 
 def _handle_clear_history(args: list[str] | None):

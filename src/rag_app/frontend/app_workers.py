@@ -10,6 +10,8 @@ from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.chat_widgets import AIMessage
 from rag_app.frontend.widgets.chat_widgets import ChatText
 from textual.app import App
+from textual.widget import Widget
+from textual.containers import Vertical
 import time
 
 if TYPE_CHECKING:
@@ -88,7 +90,15 @@ class AppWorkers(App):
 
                 def post_update(s=status, m=message):
                     cleanup()
-                    chat_text_box.add_system_message(m, s)  # type: ignore
+
+                    if isinstance(message, Widget):
+                        bubble = Vertical(m, classes="message-bubble")
+                        row = Vertical(bubble, classes="message-row info")
+                        chat_text_box.mount(row)
+                    else:
+                        chat_text_box.add_system_message(m, s)  # type: ignore
+
+                    chat_text_box.scroll_end(animate=False)
                     mount_loader()
 
                 self.call_from_thread(post_update)

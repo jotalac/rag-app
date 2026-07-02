@@ -14,6 +14,7 @@ from pathlib import Path
 from langchain_chroma import Chroma
 from rag_app.backend.config import ConfigKeys
 from rag_app.backend.config import config
+import string
 
 # connect to the database
 DB_CONNECTION_STRING: Final = f"sqlite:///{config.data_dir / 'record_manager.sqlite'}"
@@ -63,6 +64,33 @@ user_config_table = Table(
 metadata.create_all(_engine)
 
 
+def is_text_file(file_path: Path | str) -> bool:
+    """Function to check if file is a text or binary file - not 100% reliable"""
+
+    try:
+        with open(file_path, "rb") as f:
+            chunk = f.read(1024)
+
+        if not chunk:
+            return True
+
+        # if the file contains null byte - it is binary
+        if b"\x00" in chunk:
+            return False
+
+        text = chunk.decode("utf-8", errors="ignore")
+
+        text_chars = sum(1 for char in text if char.isprintable() or char in "\n\r\t")
+
+        text_binary_ratio = text_chars / len(chunk)
+
+        # check if at least 85% of the file is text
+        return text_binary_ratio > 0.85
+
+    except FileNotFoundError:
+        return False
+
+
 def add_resource(filename: str) -> tuple[bool, str]:
     file_path = config.resources_dir / filename
 
@@ -83,12 +111,17 @@ def add_resource(filename: str) -> tuple[bool, str]:
 
     if file_extension == ".pdf":
         loader = PyPDFLoader(file_path)
-    elif file_extension in [".txt", ".md"]:
-        loader = TextLoader(file_path)  # type: ignore
     elif file_extension == ".html":
         loader = BSHTMLLoader(file_path)  # type: ignore
+    elif is_text_file(file_path):
+        try:
+            loader = TextLoader(file_path)  # type: ignore
+        except Exception as e:
+            print(f"Failed to add text file {e}")
+            return (False, "Failed to load text file.")
+
     else:
-        print(f"File with extention {file_extension} is not supported")
+        print(f"File with extension {file_extension} is not supported")
         return (False, f"Unsupported file type: {file_extension}")
 
     raw_doc = loader.load()
