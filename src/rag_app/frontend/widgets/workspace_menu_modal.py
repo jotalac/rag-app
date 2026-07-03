@@ -7,10 +7,17 @@ from textual import on
 from rag_app.backend.config import ConfigKeys
 from pathlib import Path
 from textual.validation import Function, Length
-
+import uuid
 from rag_app.backend.config import config
+from rag_app.backend.db import (
+    get_all_workspaces,
+    add_workspace,
+    exists_workspace_by_name,
+    delete_workspace,
+)
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
+import random
 
 
 class WorkspaceMenuModal(ModalScreen):
@@ -18,41 +25,40 @@ class WorkspaceMenuModal(ModalScreen):
 
     BINDINGS = [
         ("escape", "close_modal", "Close modal"),
+        ("x", "delete_workspace", "Delete selected workspace"),
     ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.workspaces: dict[str, tuple[str, int]] = get_all_workspaces()
+
+    def create_options_from_dict(self) -> list[Option | None]:
+        output_options: list[Option | None] = []
+
+        for key, value in self.workspaces.items():
+            option_name = Option(f"  {value[0]}", id=key)
+
+            file_message = (
+                f"  └── 📊 {value[1]} files indexed"
+                if value[1] != 0
+                else "  └── 📁 Empty Workspace"
+            )
+            option_file_count = Option(file_message, id=key + "-info", disabled=True)
+
+            output_options.append(option_name)
+            output_options.append(option_file_count)
+            output_options.append(None)
+
+        return output_options
 
     def compose(self) -> ComposeResult:
         with Vertical(id="workspaces-dialog"):
             yield Label("Workspaces Management", classes="workspaces-menu-title")
 
+            generated_options = self.create_options_from_dict()
+
             yield OptionList(
-                Option("  Ktor Workspace (active)", id="wk1"),
-                Option("  └── 📊 41 files indexed", id="wk1-info", disabled=True),
-                None,
-                Option("  Workspace 2", id="wk2"),
-                Option("  └── 📊 12 files indexed", id="wk2-info", disabled=True),
-                None,
-                Option("  Workspace 3", id="wk34"),
-                Option("  └── 📁 Empty Workspace", id="wk64-info", disabled=True),
-                None,
-                Option("  Workspace 3", id="wk4"),
-                Option("  └── 📁 Empty Workspace", id="wkh-info", disabled=True),
-                None,
-                Option("  Workspace 3", id="wk5"),
-                Option("  └── 📁 Empty Workspace", id="wkdrg3-info", disabled=True),
-                None,
-                Option("  Workspace 3", id="wk5dsf"),
-                Option("  └── 📁 Empty Workspace", id="wkdrsdefg3-info", disabled=True),
-                None,
-                Option("  Workspace 3", id="wkdfs5"),
-                Option(
-                    "  └── 📁 Empty Workspace", id="wkdrsfghdfg3-info", disabled=True
-                ),
-                None,
-                Option("  Workspace 3", id="wk5ddfgsf"),
-                Option("  └── 📁 Empty Workspace", id="g3-fginfo", disabled=True),
-                None,
-                Option("  Workspace 3", id="wkdfghfs5"),
-                Option("  └── 📁 Empty Workspace", id="ngdffo", disabled=True),
+                *generated_options,
                 id="workspace-options",
             )
 
@@ -70,9 +76,16 @@ class WorkspaceMenuModal(ModalScreen):
                 validators=[Length(minimum=1, maximum=256)],
             )
 
+    def update_option_list(self) -> None:
+        option_list = self.query_one("#workspace-options", OptionList)
+        option_list.clear_options()
+        option_list.add_options(self.create_options_from_dict())
+        # option_list.scroll_end(animate=True)
+
     def action_close_modal(self) -> None:
         self.dismiss()
 
+    # when workspace is selected to use
     @on(OptionList.OptionSelected, "#workspace-options")
     def handle_workspace_selection(self, event: OptionList.OptionSelected) -> None:
         option_id = event.option.id
@@ -84,3 +97,58 @@ class WorkspaceMenuModal(ModalScreen):
             return
 
         self.dismiss(option_id)
+
+    # when new workspace is created
+    @on(Input.Submitted, "#add-workspace-input")
+    def handle_add_new_workspace(self, event: Input.Submitted) -> None:
+        new_workspace_name = event.input.value.strip()
+        # validate the input
+        if not new_workspace_name:
+            return
+
+        if exists_workspace_by_name(new_workspace_name):
+            self.app.notify("Name must be unique")
+            return
+
+        workspace_id = uuid.uuid4()
+        id = add_workspace(new_workspace_name, workspace_id)
+
+        if id is None:
+            return
+
+        # update the ui with the new workspace
+        self.workspaces[str(workspace_id)] = (
+            new_workspace_name,
+            0,
+        )
+
+        self.update_option_list()
+
+        event.input.value = ""
+
+    def action_delete_workspace(self) -> None:
+        # cannot delete all workspaces
+        if len(self.workspaces) == 1:
+            self.app.notify("Cannot delete all workspaces")
+            return
+
+        option_list = self.query_one("#workspace-options", OptionList)
+        highlighted_index = option_list.highlighted
+
+        if highlighted_index is None:
+            return
+
+        selected_option = option_list.get_option_at_index(highlighted_index)
+        option_id = selected_option.id
+
+        if option_id is None:
+            return
+
+        if option_id in self.workspaces:
+            if not delete_workspace(option_id):
+                print("Error deleting workspace")
+                return
+
+            del self.workspaces[option_id]
+
+            self.update_option_list()

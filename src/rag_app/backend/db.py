@@ -6,7 +6,17 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.indexes import _sql_record_manager
 from langchain_core.indexing import index
-from sqlalchemy import MetaData, Table, Column, String, select, create_engine, text
+from sqlalchemy import (
+    MetaData,
+    Table,
+    Column,
+    String,
+    UUID,
+    select,
+    delete,
+    create_engine,
+    text,
+)
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import os
 from typing import Final
@@ -14,18 +24,19 @@ from pathlib import Path
 from langchain_chroma import Chroma
 from rag_app.backend.config import ConfigKeys
 from rag_app.backend.config import config
-import string
+from rag_app.backend.utils import is_text_file
+import uuid
 
 # connect to the database
 DB_CONNECTION_STRING: Final = f"sqlite:///{config.data_dir / 'record_manager.sqlite'}"
-COLLECTION_NAME: Final = "rag-files"
+# COLLECTION_NAME: Final = "rag-files"
 
 
 def get_vector_db() -> Chroma:
     """Always returns a fresh Chroma connection using the latest config."""
     return Chroma(
         embedding_function=config.embeddings,
-        collection_name=COLLECTION_NAME,
+        collection_name=config.workspace_name,
         persist_directory=str(config.data_dir / "chroma_db"),
     )
 
@@ -44,7 +55,7 @@ _text_splitter: Final = RecursiveCharacterTextSplitter(
 
 # record manager to not save same files multiple times
 _record_manager = _sql_record_manager.SQLRecordManager(
-    namespace=f"chroma/{COLLECTION_NAME}", db_url=DB_CONNECTION_STRING
+    namespace=f"chroma/{config.workspace_name}", db_url=DB_CONNECTION_STRING
 )
 
 _record_manager.create_schema()
@@ -61,34 +72,15 @@ user_config_table = Table(
     Column("config_value", String, nullable=False),
 )
 
+workspaces_table = Table(
+    "workspaces",
+    metadata,
+    Column("id", UUID, primary_key=True),
+    Column("name", String, unique=True, nullable=False),
+    Column("resources_dir", String, nullable=False),
+)
+
 metadata.create_all(_engine)
-
-
-def is_text_file(file_path: Path | str) -> bool:
-    """Function to check if file is a text or binary file - not 100% reliable"""
-
-    try:
-        with open(file_path, "rb") as f:
-            chunk = f.read(1024)
-
-        if not chunk:
-            return True
-
-        # if the file contains null byte - it is binary
-        if b"\x00" in chunk:
-            return False
-
-        text = chunk.decode("utf-8", errors="ignore")
-
-        text_chars = sum(1 for char in text if char.isprintable() or char in "\n\r\t")
-
-        text_binary_ratio = text_chars / len(chunk)
-
-        # check if at least 85% of the file is text
-        return text_binary_ratio > 0.85
-
-    except FileNotFoundError:
-        return False
 
 
 def add_resource(filename: str) -> tuple[bool, str]:
@@ -219,6 +211,9 @@ def list_all_uploaded_files() -> list[str]:
         return unique_files
 
 
+# config methods
+
+
 def set_config(key: str, value: str) -> None:
     with _engine.connect() as conn:
         # upsert the value to the config table
@@ -284,18 +279,163 @@ def load_all_config_values() -> None:
     global gen_model, embed_model, resources_dir
 
     keys_to_fetch = [
-        ConfigKeys.RESOURCES_DIR.value,
+        # ConfigKeys.RESOURCES_DIR.value,
+        ConfigKeys.WORKSPACE_ID.value,
         ConfigKeys.GEN_MODEL.value,
         ConfigKeys.EMBED_MODEL.value,
     ]
 
     db_configs = get_configs(keys_to_fetch)
 
-    if ConfigKeys.RESOURCES_DIR.value in db_configs:
-        config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
+    # if ConfigKeys.RESOURCES_DIR.value in db_configs:
+    #     config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
+
+    if ConfigKeys.WORKSPACE_ID.value in db_configs:
+        config.workspace_name = db_configs[ConfigKeys.WORKSPACE_ID.value]
 
     if ConfigKeys.GEN_MODEL.value in db_configs:
         config.gen_model = db_configs[ConfigKeys.GEN_MODEL.value]
 
     if ConfigKeys.EMBED_MODEL.value in db_configs:
         config.embed_model = db_configs[ConfigKeys.EMBED_MODEL.value]
+
+
+# workspaces methods
+
+
+def get_workspace_info(workspace_name: str) -> tuple[str, uuid.UUID] | None:
+    with _engine.connect() as conn:
+        query = select(workspaces_table.c.resources_dir, workspaces_table.c.id).where(
+            workspaces_table.c.name == workspace_name
+        )
+
+        row = conn.execute(query).fetchone()
+
+        if row is not None:
+            return (row[0], row[1])
+
+        return None
+
+
+def get_all_workspaces() -> dict[str, tuple[str, int]]:
+    query = text("""
+            SELECT 
+                w.id, 
+                w.name, 
+                COUNT(DISTINCT u.group_id) as file_count
+            FROM workspaces w
+            LEFT JOIN upsertion_record u 
+                ON u.namespace = 'chroma/' || w.id AND u.group_id IS NOT NULL
+            GROUP BY w.id, w.name
+        """)
+
+    with _engine.connect() as conn:
+        result = conn.execute(query)
+
+        workspaces = {}
+        for row in result:
+            # row[0] is id, row[1] is name, row[2] is file_count
+            workspaces[str(row[0])] = (str(row[1]), int(row[2]))
+
+        return workspaces
+
+
+def exists_workspace_by_name(workspace_name: str) -> bool:
+    try:
+        with _engine.connect() as conn:
+            query = select(workspaces_table.c.id).where(
+                workspaces_table.c.name == workspace_name
+            )
+
+            result = conn.execute(query).scalar()
+
+            if result is not None:
+                return True
+            else:
+                return False
+
+    except Exception:
+        print("Error checking name")
+        return False
+
+
+def exists_workspace_by_id(workspace_id: uuid.UUID) -> bool:
+    try:
+        with _engine.connect() as conn:
+            query = select(workspaces_table.c.id).where(
+                workspaces_table.c.id == workspace_id
+            )
+
+            result = conn.execute(query).scalar()
+
+            if result is not None:
+                return True
+            else:
+                return False
+
+    except Exception:
+        print("Error checking name")
+        return False
+
+
+def add_workspace(
+    workspace_name: str, id: uuid.UUID = uuid.uuid4()
+) -> uuid.UUID | None:
+    try:
+        value_to_insert = {
+            "name": workspace_name,
+            "id": id,
+            "resources_dir": str(config.default_resources_dir),
+        }
+
+        with _engine.connect() as conn:
+            query = sqlite_insert(workspaces_table).values(value_to_insert)
+
+            conn.execute(query)
+            conn.commit()
+
+        return id
+    except Exception as e:
+        print(f"Failed to save configs: {e}")
+        return None
+
+
+def delete_workspace(workspace_id: str) -> bool:
+    try:
+        workspace_uuid = uuid.UUID(workspace_id)
+        # check if the workspace exists
+        if not exists_workspace_by_id(workspace_uuid):
+            print("Workspace does not exist")
+            return False
+
+        try:
+            # delete the embeddings
+            tmp_vector_db = Chroma(
+                collection_name=workspace_id,
+                persist_directory=str(config.data_dir / "chroma_db"),
+                embedding_function=config.embeddings,
+            )
+
+            tmp_vector_db.delete_collection()
+        except Exception as e:
+            print(f"Error deleting vector embeddings, might be empty {e}")
+
+        # delete
+        with _engine.connect() as conn:
+            with conn.begin():
+                namespace = f"chroma/{workspace_id}"
+                conn.execute(
+                    text("DELETE FROM upsertion_record WHERE namespace = :ns"),
+                    {"ns": namespace},
+                )
+
+                del_query = delete(workspaces_table).where(
+                    workspaces_table.c.id == workspace_uuid
+                )
+                conn.execute(del_query)
+
+        return True
+
+    except Exception as e:
+        print(e)
+        return False
