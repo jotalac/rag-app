@@ -36,7 +36,7 @@ def get_vector_db() -> Chroma:
     """Always returns a fresh Chroma connection using the latest config."""
     return Chroma(
         embedding_function=config.embeddings,
-        collection_name=config.workspace_name,
+        collection_name=str(config.workspace_id),
         persist_directory=str(config.data_dir / "chroma_db"),
     )
 
@@ -49,16 +49,34 @@ def get_retriever():
     )
 
 
+_cached_record_manager: _sql_record_manager.SQLRecordManager | None = None
+_cached_workspace_id = None
+
+
+def get_record_manager() -> _sql_record_manager.SQLRecordManager:
+    global _cached_record_manager, _cached_workspace_id
+
+    if (
+        _cached_record_manager is not None
+        and _cached_workspace_id == config.workspace_id
+    ):
+        return _cached_record_manager
+
+    _cached_workspace_id = config.workspace_id
+
+    _cached_record_manager = _sql_record_manager.SQLRecordManager(
+        namespace=f"chroma/{config.workspace_id}", engine=_engine
+    )
+
+    _cached_record_manager.create_schema()
+
+    return _cached_record_manager
+
+
 _text_splitter: Final = RecursiveCharacterTextSplitter(
     chunk_size=1500, chunk_overlap=100
 )
 
-# record manager to not save same files multiple times
-_record_manager = _sql_record_manager.SQLRecordManager(
-    namespace=f"chroma/{config.workspace_name}", db_url=DB_CONNECTION_STRING
-)
-
-_record_manager.create_schema()
 
 # normal connection to db
 _engine = create_engine(DB_CONNECTION_STRING)
@@ -129,7 +147,7 @@ def add_resource(filename: str) -> tuple[bool, str]:
     # add documents to the database with indexing
     index(
         doc_chunks,
-        _record_manager,  # type: ignore
+        get_record_manager(),  # type: ignore
         get_vector_db(),
         cleanup="incremental",
         source_id_key="source",
@@ -143,15 +161,16 @@ def add_resource(filename: str) -> tuple[bool, str]:
 
 def remove_resource(filename: str) -> bool:
     file_path = config.resources_dir / filename
+    rm = get_record_manager()
 
-    keys_to_delete = _record_manager.list_keys(group_ids=[str(file_path)])
+    keys_to_delete = rm.list_keys(group_ids=[str(file_path)])
 
     if not keys_to_delete:
         print(f"Not records found to delete, for file {filename}")
         return False
 
     get_vector_db().delete(keys_to_delete)
-    _record_manager.delete_keys(keys_to_delete)
+    rm.delete_keys(keys_to_delete)
 
     return True
 
@@ -178,31 +197,34 @@ def remove_resources_dir(subdir_name: str) -> bool:
         return False
 
     get_vector_db().delete(keys_to_delete)
-    _record_manager.delete_keys(keys_to_delete)
+    get_record_manager().delete_keys(keys_to_delete)
 
     return True
 
 
 def remove_all_resources() -> None:
-    all_keys = _record_manager.list_keys()
+    rm = get_record_manager()
+    all_keys = rm.list_keys()
 
     if not all_keys:
         print("Database already empty")
         return
 
     get_vector_db().delete(all_keys)
-    _record_manager.delete_keys(all_keys)
+    rm.delete_keys(all_keys)
 
 
 def list_all_uploaded_files() -> list[str]:
     query = text("""
                  SELECT DISTINCT group_id
                  FROM upsertion_record
-                 WHERE group_id IS NOT NULL
+                 WHERE namespace = :namespace AND group_id IS NOT NULL
                  """)
 
     with _engine.connect() as conn:
-        result = conn.execute(query)
+        target_namespace = f"chroma/{config.workspace_id}"
+        print(f"target namespace: {target_namespace}")
+        result = conn.execute(query, {"namespace": target_namespace})
 
         unique_files = []
         for row in result:
@@ -214,20 +236,20 @@ def list_all_uploaded_files() -> list[str]:
 # config methods
 
 
-def set_config(key: str, value: str) -> None:
-    with _engine.connect() as conn:
-        # upsert the value to the config table
-        query = sqlite_insert(user_config_table).values(
-            config_key=key, config_value=value.strip()
-        )
+# def set_config(key: str, value: str) -> None:
+#     with _engine.connect() as conn:
+#         # upsert the value to the config table
+#         query = sqlite_insert(user_config_table).values(
+#             config_key=key, config_value=value.strip()
+#         )
 
-        query = query.on_conflict_do_update(
-            index_elements=["config_key"],
-            set_=dict(config_value=query.excluded.config_value),
-        )
+#         query = query.on_conflict_do_update(
+#             index_elements=["config_key"],
+#             set_=dict(config_value=query.excluded.config_value),
+#         )
 
-        conn.execute(query)
-        conn.commit()
+#         conn.execute(query)
+#         conn.commit()
 
 
 def get_config(key: str, default: str | None = None) -> str | None:
@@ -280,7 +302,7 @@ def load_all_config_values() -> None:
 
     keys_to_fetch = [
         # ConfigKeys.RESOURCES_DIR.value,
-        ConfigKeys.WORKSPACE_ID.value,
+        ConfigKeys.WORKSPACE_NAME.value,
         ConfigKeys.GEN_MODEL.value,
         ConfigKeys.EMBED_MODEL.value,
     ]
@@ -290,8 +312,8 @@ def load_all_config_values() -> None:
     # if ConfigKeys.RESOURCES_DIR.value in db_configs:
     #     config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
 
-    if ConfigKeys.WORKSPACE_ID.value in db_configs:
-        config.workspace_name = db_configs[ConfigKeys.WORKSPACE_ID.value]
+    if ConfigKeys.WORKSPACE_NAME.value in db_configs:
+        config.workspace_name = db_configs[ConfigKeys.WORKSPACE_NAME.value]
 
     if ConfigKeys.GEN_MODEL.value in db_configs:
         config.gen_model = db_configs[ConfigKeys.GEN_MODEL.value]

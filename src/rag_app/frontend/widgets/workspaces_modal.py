@@ -4,7 +4,7 @@ from textual.containers import Vertical
 from textual.widgets import Label, Input, Button, Static
 from textual.containers import Horizontal
 from textual import on
-from rag_app.backend.config import ConfigKeys
+from rag_app.backend.config import ConfigKeys, config
 from pathlib import Path
 from textual.validation import Function, Length
 import uuid
@@ -14,6 +14,7 @@ from rag_app.backend.db import (
     add_workspace,
     exists_workspace_by_name,
     delete_workspace,
+    save_configs,
 )
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
@@ -36,13 +37,18 @@ class WorkspaceMenuModal(ModalScreen):
         output_options: list[Option | None] = []
 
         for key, value in self.workspaces.items():
-            option_name = Option(f"  {value[0]}", id=key)
+            name = value[0]
+            # show the active keyword if it is active
+            if config.workspace_id == uuid.UUID(key):
+                name += " (active)"
+            option_name = Option(f"  {name}", id=key)
 
             file_message = (
                 f"  └── 📊 {value[1]} files indexed"
                 if value[1] != 0
                 else "  └── 📁 Empty Workspace"
             )
+
             option_file_count = Option(file_message, id=key + "-info", disabled=True)
 
             output_options.append(option_name)
@@ -90,11 +96,13 @@ class WorkspaceMenuModal(ModalScreen):
     def handle_workspace_selection(self, event: OptionList.OptionSelected) -> None:
         option_id = event.option.id
 
-        print(event.option.prompt)
-
-        # Guard clause: Don't allow clicking the disabled info rows
-        if option_id and option_id.endswith("-info"):
+        if option_id is None or option_id.endswith("-info"):
             return
+
+        workspace_name = str(event.option.prompt).strip()
+        save_configs({ConfigKeys.WORKSPACE_NAME.value: workspace_name})
+        config.workspace_id = uuid.UUID(option_id)
+        config.workspace_name = workspace_name
 
         self.dismiss(option_id)
 
