@@ -83,6 +83,7 @@ _engine = create_engine(DB_CONNECTION_STRING)
 
 # add the user config table
 metadata = MetaData()
+
 user_config_table = Table(
     "user_config",
     metadata,
@@ -96,9 +97,14 @@ workspaces_table = Table(
     Column("id", UUID, primary_key=True),
     Column("name", String, unique=True, nullable=False),
     Column("resources_dir", String, nullable=False),
+    Column("gen_model", String, nullable=False),
+    Column("embed_model", String, nullable=False),
 )
 
 metadata.create_all(_engine)
+
+# create the record manager if not exists
+_sql_record_manager.SQLRecordManager(namespace="init", engine=_engine).create_schema()
 
 
 def add_resource(filename: str) -> tuple[bool, str]:
@@ -223,7 +229,6 @@ def list_all_uploaded_files() -> list[str]:
 
     with _engine.connect() as conn:
         target_namespace = f"chroma/{config.workspace_id}"
-        print(f"target namespace: {target_namespace}")
         result = conn.execute(query, {"namespace": target_namespace})
 
         unique_files = []
@@ -234,24 +239,6 @@ def list_all_uploaded_files() -> list[str]:
 
 
 # config methods
-
-
-# def set_config(key: str, value: str) -> None:
-#     with _engine.connect() as conn:
-#         # upsert the value to the config table
-#         query = sqlite_insert(user_config_table).values(
-#             config_key=key, config_value=value.strip()
-#         )
-
-#         query = query.on_conflict_do_update(
-#             index_elements=["config_key"],
-#             set_=dict(config_value=query.excluded.config_value),
-#         )
-
-#         conn.execute(query)
-#         conn.commit()
-
-
 def get_config(key: str, default: str | None = None) -> str | None:
     with _engine.connect() as conn:
         query = select(user_config_table.c.config_value).where(
@@ -297,29 +284,29 @@ def save_configs(config_dict: dict[str, str]) -> bool:
         return False
 
 
-def load_all_config_values() -> None:
-    global gen_model, embed_model, resources_dir
+# def load_all_config_values() -> None:
+#     global gen_model, embed_model, resources_dir
 
-    keys_to_fetch = [
-        # ConfigKeys.RESOURCES_DIR.value,
-        ConfigKeys.WORKSPACE_NAME.value,
-        ConfigKeys.GEN_MODEL.value,
-        ConfigKeys.EMBED_MODEL.value,
-    ]
+#     keys_to_fetch = [
+#         # ConfigKeys.RESOURCES_DIR.value,
+#         ConfigKeys.WORKSPACE_NAME.value,
+#         ConfigKeys.GEN_MODEL.value,
+#         ConfigKeys.EMBED_MODEL.value,
+#     ]
 
-    db_configs = get_configs(keys_to_fetch)
+#     db_configs = get_configs(keys_to_fetch)
 
-    # if ConfigKeys.RESOURCES_DIR.value in db_configs:
-    #     config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
+#     # if ConfigKeys.RESOURCES_DIR.value in db_configs:
+#     #     config.resources_dir = Path(db_configs[ConfigKeys.RESOURCES_DIR.value])
 
-    if ConfigKeys.WORKSPACE_NAME.value in db_configs:
-        config.workspace_name = db_configs[ConfigKeys.WORKSPACE_NAME.value]
+#     if ConfigKeys.WORKSPACE_NAME.value in db_configs:
+#         config.workspace_name = db_configs[ConfigKeys.WORKSPACE_NAME.value]
 
-    if ConfigKeys.GEN_MODEL.value in db_configs:
-        config.gen_model = db_configs[ConfigKeys.GEN_MODEL.value]
+#     if ConfigKeys.GEN_MODEL.value in db_configs:
+#         config.gen_model = db_configs[ConfigKeys.GEN_MODEL.value]
 
-    if ConfigKeys.EMBED_MODEL.value in db_configs:
-        config.embed_model = db_configs[ConfigKeys.EMBED_MODEL.value]
+#     if ConfigKeys.EMBED_MODEL.value in db_configs:
+#         config.embed_model = db_configs[ConfigKeys.EMBED_MODEL.value]
 
 
 # workspaces methods
@@ -400,14 +387,17 @@ def exists_workspace_by_id(workspace_id: uuid.UUID) -> bool:
         return False
 
 
-def add_workspace(
-    workspace_name: str, id: uuid.UUID = uuid.uuid4()
-) -> uuid.UUID | None:
+def add_workspace(workspace_name: str, id: uuid.UUID | None = None) -> uuid.UUID | None:
     try:
+        if id is None:
+            id = uuid.uuid4()
+
         value_to_insert = {
             "name": workspace_name,
             "id": id,
             "resources_dir": str(config.default_resources_dir),
+            "gen_model": config.gen_model,
+            "embed_model": config.embed_model,
         }
 
         with _engine.connect() as conn:
@@ -460,4 +450,59 @@ def delete_workspace(workspace_id: str) -> bool:
 
     except Exception as e:
         print(e)
+        return False
+
+
+def load_workspace_config(workspace_id: uuid.UUID) -> bool:
+    global _cached_record_manager, _cached_workspace_id
+
+    try:
+        with _engine.connect() as conn:
+            query = select(
+                workspaces_table.c.resources_dir,
+                workspaces_table.c.gen_model,
+                workspaces_table.c.embed_model,
+            ).where(workspaces_table.c.id == workspace_id)
+
+            row = conn.execute(query).fetchone()
+
+            if row:
+                config.workspace_id = workspace_id
+                config.resources_dir = Path(row[0])
+                config.gen_model = row[1]
+                config.embed_model = row[2]
+
+                _cached_record_manager = None
+
+                return True
+            return False
+    except Exception as e:
+        print(f"Error loading workspace config: {e}")
+        return False
+
+
+def save_workspace_configs(
+    resources_dir: str, gen_model: str, embed_model: str
+) -> bool:
+    try:
+        with _engine.connect() as conn:
+            with conn.begin():
+                query = (
+                    workspaces_table.update()
+                    .where(workspaces_table.c.id == config.workspace_id)
+                    .values(
+                        resources_dir=resources_dir,
+                        gen_model=gen_model,
+                        embed_model=embed_model,
+                    )
+                )
+                conn.execute(query)
+
+        config.resources_dir = Path(resources_dir)
+        config.gen_model = gen_model
+        config.embed_model = embed_model
+
+        return True
+    except Exception as e:
+        print(f"Error saving workspace configs: {e}")
         return False

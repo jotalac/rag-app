@@ -60,7 +60,7 @@ class ConfigModal(ModalScreen):
                 )
 
             yield Label(
-                "*After changing this value all resources will be removed",
+                f"*If changed, all resources from [b]{config.workspace_name}[/b] workspace will be removed",
                 classes="label-note",
             )
 

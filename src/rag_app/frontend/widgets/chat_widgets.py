@@ -88,9 +88,10 @@ class WelcomeMessage(Vertical):
 
 | Configuration | Current Value |
 | :--- | :--- |
+| **Workspace** | `{config.workspace_name}` |
+| **Resources Directory** | `{config.resources_dir}` |
 | **Generation Model** | `{config.gen_model}` |
 | **Embedding Model** | `{config.embed_model}` |
-| **Resources Directory** | `{config.resources_dir}` |
 
 *Type `/help` to see available commands or simply ask a question.*
         """

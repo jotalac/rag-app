@@ -24,6 +24,7 @@
 
 .message-bubble {
     width: auto;
+    height: auto;
     max-width: 75%;
     padding: 1 2;
     border: solid $primary;
@@ -96,13 +97,12 @@ AsciiSpinner {
 .resource-tree {
     width: auto;
     min-width: 40;
-    height: auto;
-    max-height: 50;
+    height: auto;         
+    max-height: 15;       
     background: transparent;
-    padding: 1;
+    padding: 0 1;
 }
 
-/* Optional: Make the tree text match your app's standard text color */
-#resource-tree > .tree--label {
+.resource-tree > .tree--label {
     color: $text;
 }

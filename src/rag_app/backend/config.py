@@ -10,7 +10,7 @@ class ConfigKeys(Enum):
     RESOURCES_DIR = "resources_dir"
     GEN_MODEL = "generation_model"
     EMBED_MODEL = "embedding_model"
-    WORKSPACE_NAME = "workspace_name"
+    WORKSPACE_NAME = "active_workspace_id"
 
 
 class AppConfig:

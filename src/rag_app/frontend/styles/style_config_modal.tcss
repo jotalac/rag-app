@@ -48,7 +48,8 @@ ConfigModal {
 }
 
 .label-note {
-    max-width: 90%;
+    max-width: 100%;
+    content-align: left middle;
     color: $text-muted;
     text-style: italic;
 }

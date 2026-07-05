@@ -52,10 +52,12 @@ WorkspaceMenuModal {
     color: $error;
     width: 1fr;
     content-align: left middle;
+    text-style: italic;
 }
 
 .label-note{
     color: $text-muted;
     width: 1fr;
     content-align: right middle;
+    text-style: italic;
 }

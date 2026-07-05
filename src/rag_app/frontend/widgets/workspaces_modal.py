@@ -38,10 +38,13 @@ class WorkspaceMenuModal(ModalScreen):
 
         for key, value in self.workspaces.items():
             name = value[0]
-            # show the active keyword if it is active
+
             if config.workspace_id == uuid.UUID(key):
-                name += " (active)"
-            option_name = Option(f"  {name}", id=key)
+                option_prompt = f"  [b $success]{name} (active)[/]"
+            else:
+                option_prompt = f"  {name}"
+
+            option_name = Option(option_prompt, id=key)
 
             file_message = (
                 f"  └── 📊 {value[1]} files indexed"
@@ -150,6 +153,11 @@ class WorkspaceMenuModal(ModalScreen):
         option_id = selected_option.id
 
         if option_id is None:
+            return
+
+        # cannot delete active workspace
+        if config.workspace_id == uuid.UUID(option_id):
+            self.app.notify("Cannot delete active workspace")
             return
 
         if option_id in self.workspaces:
