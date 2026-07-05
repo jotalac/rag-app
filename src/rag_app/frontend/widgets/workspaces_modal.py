@@ -15,6 +15,7 @@ from rag_app.backend.db import (
     exists_workspace_by_name,
     delete_workspace,
     save_configs,
+    load_workspace_config,
 )
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
@@ -102,10 +103,13 @@ class WorkspaceMenuModal(ModalScreen):
         if option_id is None or option_id.endswith("-info"):
             return
 
-        workspace_name = str(event.option.prompt).strip()
+        workspace_name = self.workspaces[option_id][0]
         save_configs({ConfigKeys.WORKSPACE_NAME.value: workspace_name})
-        config.workspace_id = uuid.UUID(option_id)
         config.workspace_name = workspace_name
+        load_workspace_config(uuid.UUID(option_id))
+
+        if hasattr(self.app, "update_workspace_tag"):
+            self.app.update_workspace_tag()
 
         self.dismiss(option_id)
 

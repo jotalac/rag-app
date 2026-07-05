@@ -8,7 +8,7 @@ from rag_app.backend.config import ConfigKeys
 from pathlib import Path
 from textual.validation import Function, Length
 from rag_app.backend.db import (
-    save_configs,
+    save_workspace_configs,
     remove_all_resources,
 )
 from rag_app.backend.config import config
@@ -25,7 +25,7 @@ class ConfigModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="config-dialog"):
-            yield Label("Application Config", classes="config-title")
+            yield Label("Workspace Config", classes="config-title")
 
             with Horizontal(classes="config-row"):
                 yield Label("Resources directory*:")
@@ -38,8 +38,6 @@ class ConfigModal(ModalScreen):
                         Length(minimum=1),
                     ],
                 )
-
-            yield Label("Model config", classes="config-title")
 
             with Horizontal(classes="config-row"):
                 yield Label("Generation model (LLM):")
@@ -115,12 +113,10 @@ class ConfigModal(ModalScreen):
         new_embed_model = embed_model_input.value.strip()
         new_gen_model = gen_model_input.value.strip()
 
-        save_success = save_configs(
-            {
-                ConfigKeys.RESOURCES_DIR.value: new_resources_dir,
-                ConfigKeys.EMBED_MODEL.value: new_embed_model,
-                ConfigKeys.GEN_MODEL.value: new_gen_model,
-            }
+        save_success = save_workspace_configs(
+            resources_dir=new_resources_dir,
+            gen_model=new_gen_model,
+            embed_model=new_embed_model,
         )
 
         if not save_success:

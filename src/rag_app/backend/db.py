@@ -94,7 +94,7 @@ user_config_table = Table(
 workspaces_table = Table(
     "workspaces",
     metadata,
-    Column("id", UUID, primary_key=True),
+    Column("id", String, primary_key=True),
     Column("name", String, unique=True, nullable=False),
     Column("resources_dir", String, nullable=False),
     Column("gen_model", String, nullable=False),
@@ -312,16 +312,19 @@ def save_configs(config_dict: dict[str, str]) -> bool:
 # workspaces methods
 
 
-def get_workspace_info(workspace_name: str) -> tuple[str, uuid.UUID] | None:
+def get_workspace_info(workspace_name: str) -> tuple[str, uuid.UUID, str, str] | None:
     with _engine.connect() as conn:
-        query = select(workspaces_table.c.resources_dir, workspaces_table.c.id).where(
-            workspaces_table.c.name == workspace_name
-        )
+        query = select(
+            workspaces_table.c.resources_dir,
+            workspaces_table.c.id,
+            workspaces_table.c.gen_model,
+            workspaces_table.c.embed_model,
+        ).where(workspaces_table.c.name == workspace_name)
 
         row = conn.execute(query).fetchone()
 
         if row is not None:
-            return (row[0], row[1])
+            return (row[0], row[1], row[2], row[3])
 
         return None
 
@@ -343,8 +346,8 @@ def get_all_workspaces() -> dict[str, tuple[str, int]]:
 
         workspaces = {}
         for row in result:
-            # row[0] is id, row[1] is name, row[2] is file_count
-            workspaces[str(row[0])] = (str(row[1]), int(row[2]))
+            id_str = str(row[0])
+            workspaces[id_str] = (str(row[1]), int(row[2]))
 
         return workspaces
 
@@ -372,7 +375,7 @@ def exists_workspace_by_id(workspace_id: uuid.UUID) -> bool:
     try:
         with _engine.connect() as conn:
             query = select(workspaces_table.c.id).where(
-                workspaces_table.c.id == workspace_id
+                workspaces_table.c.id == str(workspace_id)
             )
 
             result = conn.execute(query).scalar()
@@ -394,7 +397,7 @@ def add_workspace(workspace_name: str, id: uuid.UUID | None = None) -> uuid.UUID
 
         value_to_insert = {
             "name": workspace_name,
-            "id": id,
+            "id": str(id),
             "resources_dir": str(config.default_resources_dir),
             "gen_model": config.gen_model,
             "embed_model": config.embed_model,
@@ -442,7 +445,7 @@ def delete_workspace(workspace_id: str) -> bool:
                 )
 
                 del_query = delete(workspaces_table).where(
-                    workspaces_table.c.id == workspace_uuid
+                    workspaces_table.c.id == str(workspace_uuid)
                 )
                 conn.execute(del_query)
 
@@ -462,7 +465,7 @@ def load_workspace_config(workspace_id: uuid.UUID) -> bool:
                 workspaces_table.c.resources_dir,
                 workspaces_table.c.gen_model,
                 workspaces_table.c.embed_model,
-            ).where(workspaces_table.c.id == workspace_id)
+            ).where(workspaces_table.c.id == str(workspace_id))
 
             row = conn.execute(query).fetchone()
 
@@ -489,7 +492,7 @@ def save_workspace_configs(
             with conn.begin():
                 query = (
                     workspaces_table.update()
-                    .where(workspaces_table.c.id == config.workspace_id)
+                    .where(workspaces_table.c.id == str(config.workspace_id))
                     .values(
                         resources_dir=resources_dir,
                         gen_model=gen_model,

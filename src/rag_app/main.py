@@ -37,14 +37,29 @@ class RagApp(AppWorkers):
 
         yield ChatText()
 
-        yield PromptInput()
+        from textual.containers import Vertical
+        from textual.widgets import Label
+
+        with Vertical(id="input-container"):
+            yield Label(id="workspace-tag")
+            yield PromptInput()
 
         yield Footer(show_command_palette=False)
 
     def on_mount(self):
         self.load_all_config_values()
+        self.update_workspace_tag()
         self.add_welcome_text()
         self.action_focus_input()
+
+    def update_workspace_tag(self):
+        try:
+            from textual.widgets import Label
+
+            workspace_tag = self.query_one("#workspace-tag", Label)
+            workspace_tag.update(f"Workspace: [b]{config.workspace_name}[/b]")
+        except Exception:
+            pass
 
     def load_all_config_values(self):
         config.init_from_db()

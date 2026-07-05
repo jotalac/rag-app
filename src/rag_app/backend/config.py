@@ -81,8 +81,11 @@ class AppConfig:
         return self._workspace_id
 
     @workspace_id.setter
-    def workspace_id(self, new_workspace_id: uuid.UUID) -> None:
-        self._workspace_id = new_workspace_id
+    def workspace_id(self, new_workspace_id: uuid.UUID | str) -> None:
+        if isinstance(new_workspace_id, str):
+            self._workspace_id = uuid.UUID(new_workspace_id)
+        else:
+            self._workspace_id = new_workspace_id
 
     def init_from_db(self) -> None:
         from rag_app.backend.db import (
@@ -94,20 +97,12 @@ class AppConfig:
         # configs init
         keys_to_fetch = [
             ConfigKeys.WORKSPACE_NAME.value,
-            ConfigKeys.GEN_MODEL.value,
-            ConfigKeys.EMBED_MODEL.value,
         ]
 
         configs = get_configs(keys_to_fetch)
 
         if ConfigKeys.WORKSPACE_NAME.value in configs:
             config.workspace_name = configs[ConfigKeys.WORKSPACE_NAME.value]
-
-        if ConfigKeys.GEN_MODEL.value in configs:
-            config.gen_model = configs[ConfigKeys.GEN_MODEL.value]
-
-        if ConfigKeys.EMBED_MODEL.value in configs:
-            config.embed_model = configs[ConfigKeys.EMBED_MODEL.value]
 
         # workspace init
 
@@ -120,6 +115,8 @@ class AppConfig:
         else:
             config.resources_dir = Path(workspace_info[0])
             config.workspace_id = workspace_info[1]
+            config.gen_model = workspace_info[2]
+            config.embed_model = workspace_info[3]
 
 
 # create singleton
