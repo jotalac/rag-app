@@ -109,14 +109,17 @@ class ConfigModal(ModalScreen):
             self.notify("Invalid values", severity="warning")
             return
 
-        new_resources_dir = resources_dir_input.value.strip()
-        new_embed_model = embed_model_input.value.strip()
+        new_old_resources_dir = (
+            resources_dir_input.value.strip(),
+            config.resources_dir,
+        )
+        new_old_embed_model = (embed_model_input.value.strip(), config.embed_model)
         new_gen_model = gen_model_input.value.strip()
 
         save_success = save_workspace_configs(
-            resources_dir=new_resources_dir,
+            resources_dir=new_old_resources_dir[0],
             gen_model=new_gen_model,
-            embed_model=new_embed_model,
+            embed_model=new_old_embed_model[0],
         )
 
         if not save_success:
@@ -124,15 +127,12 @@ class ConfigModal(ModalScreen):
             return
 
         # delete all resources on embed model change
-        if new_embed_model != config.embed_model or new_resources_dir != str(
-            config.resources_dir
-        ):
-            self.notify("Deleting all saved resources", severity="warning")
-            remove_all_resources()
+        if new_old_embed_model[0] != new_old_embed_model[1] or new_old_resources_dir[
+            0
+        ] != str(new_old_resources_dir[1]):
 
-        config.resources_dir = Path(new_resources_dir)
-        config.gen_model = new_gen_model
-        config.embed_model = new_embed_model
+            self.notify("Deleting all workspace resources", severity="warning")
+            remove_all_resources()
 
         self.notify("Config saved successfully", severity="information")
 

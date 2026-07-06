@@ -192,9 +192,15 @@ def remove_resources_dir(subdir_name: str) -> bool:
             SELECT key
             FROM upsertion_record
             WHERE group_id LIKE :target_dir
+            AND namespace = :namespace
+                     
         """)
 
-        result = conn.execute(query, {"target_dir": f"{target_dir}%"})
+        target_namespace = f"chroma/{config.workspace_id}"
+
+        result = conn.execute(
+            query, {"target_dir": f"{target_dir}%", "namespace": target_namespace}
+        )
 
         keys_to_delete = [row[0] for row in result]
 
@@ -435,7 +441,6 @@ def delete_workspace(workspace_id: str) -> bool:
         except Exception as e:
             print(f"Error deleting vector embeddings, might be empty {e}")
 
-        # delete
         with _engine.connect() as conn:
             with conn.begin():
                 namespace = f"chroma/{workspace_id}"
