@@ -4,7 +4,7 @@ from pathlib import Path
 
 class ResourcesTreeWidget(Tree[str]):
     def __init__(self, resources_paths: list[str], *args, **kwargs):
-        super().__init__("Saved resources", *args, **kwargs)
+        super().__init__(f"Saved resources ({len(resources_paths)})", *args, **kwargs)
         self.resources_paths = resources_paths
 
     def on_mount(self) -> None:

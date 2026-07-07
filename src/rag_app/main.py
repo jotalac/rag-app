@@ -16,7 +16,13 @@ from rag_app.frontend.widgets.resources_tree_widget import ResourcesTreeWidget
 
 class RagApp(AppWorkers):
 
-    CSS_PATH = "frontend/styles/style.tcss"
+    CSS_PATH = [
+        "frontend/styles/style_main.tcss",
+        "frontend/styles/style_chat_widgets.tcss",
+        "frontend/styles/style_welcome.tcss",
+        "frontend/styles/style_resource_tree.tcss",
+        "frontend/styles/style_custom_spinner.tcss"
+    ]
 
     BINDINGS = [
         ("d", "toggle_dark", "Toggle dark mode"),

@@ -17,6 +17,7 @@ A pure RAG pipeline with TUI, designed to work well with smaller local LLMs (via
 - By sticking to a pure RAG pipeline, this app works well with smaller models, such as `llama3.2:3b`.
 - Smaller models don't handle agentic workflows and tool calling very well; they often get stuck in a loop or make things up.
 - With this app you get answers referencing only the uploaded documents. When the information is not there, the app will tell you instead of making things up.
+- You can have multiple workspaces that separates your resources, so not all resources are used every time
 
 ## Requirements
 
@@ -86,7 +87,6 @@ rag-app
 
 ## Current Limitations
 
-- **Single Workspace:** You cannot separate your resources; all resources are available for all prompts.
 - **Language Support:** For smaller models, querying in languages other than English often yields poor or hallucinated results.
 - **Thinking Models:** Thinking output is not currently visible.
 
@@ -96,4 +96,3 @@ rag-app
 - Add support for importing resources directly from web URLs.
 - Add support for embedding and querying images, audio, and other media resources.
 - Add support for cloud LLM providers.
-- Adding resources from any folder (not only from one resources directory)

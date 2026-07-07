@@ -1,0 +1,21 @@
+#chat-text {
+    height: 1fr;
+    padding: 0 2;
+}
+
+#input-container {
+    dock: bottom;
+    height: auto;
+    width: 100%;
+}
+
+#workspace-tag {
+    color: $text-muted;
+    padding: 1 2;
+    text-style: bold;
+    margin-left: 1;
+}
+
+#chat-input {
+    margin-bottom: 2;
+}

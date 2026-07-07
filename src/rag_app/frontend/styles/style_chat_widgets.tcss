@@ -1,0 +1,74 @@
+.message-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.message-row.user {
+    align: right middle;
+}
+
+.message-row.ai {
+    align: left middle;
+}
+
+.message-bubble {
+    width: auto;
+    height: auto;
+    max-width: 90%;
+    padding: 1 2;
+    border: solid $primary;
+    background: $surface;
+}
+
+.message-bubble Markdown {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+}
+
+.message-row.user .message-bubble {
+    background: transparent;
+    border: transparent;
+}
+
+.message-row.error .message-bubble {
+    background: $error 20%;
+    color: $error;
+    border: solid $error;
+}
+
+.message-row.info .message-bubble {
+    background: $secondary 20%;
+    color: $primary;
+    border: solid $secondary;
+}
+
+.message-row.success .message-bubble {
+    background: $success 20%;
+    color: $success;
+    border: solid $success;
+}
+
+.ai-collapsible {
+    margin: 1 2;
+}
+
+.source-collapsible {
+    width: 100%;
+    height: auto;
+    border: none;
+    background: transparent;
+    margin-bottom: 0;
+    padding-bottom: 1;
+}
+
+.source-collapsible CollapsibleTitle {
+    color: $text-muted;
+    text-style: italic;
+    background: transparent;
+}
+
+.source-collapsible CollapsibleTitle:hover {
+    color: $text;
+}
