@@ -4,7 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 from rag_app.frontend.command_handler import Commands, handle_command
 from textual.worker import Worker, get_current_worker
-from rag_app.backend.rag import generate_message
+from rag_app.backend.rag import generate_message, AIMessageType
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.chat_widgets import AIMessage
@@ -12,6 +12,7 @@ from rag_app.frontend.widgets.chat_widgets import ChatText
 from textual.app import App
 from textual.widget import Widget
 from textual.containers import Vertical
+
 import time
 
 if TYPE_CHECKING:
@@ -39,20 +40,37 @@ class AppWorkers(App):
 
         try:
             # display the text as it is being generated
-            async for chunk in generate_message(user_prompt):
-                # append the new generated chunk
-                acc_response += chunk
+            async for response in generate_message(user_prompt):
+                response_type, response_content = response
 
-                current_time = time.time()
-                if (current_time - last_update_time) > 0.25:
-                    ai_widget.update_text(acc_response)
-                    last_update_time = current_time
+                match response_type:
+                    case AIMessageType.TEXT:
+                        # append the new generated chunk
+                        acc_response += str(response_content)
 
+                        current_time = time.time()
+                        if (current_time - last_update_time) > 0.25:
+                            ai_widget.update_text(acc_response)
+                            last_update_time = current_time
+
+                    case AIMessageType.DOC_NAMES:
+                        docs_names_string = "\n".join(
+                            [f"📄 {filename}" for filename in response_content]
+                        )
+                        ai_widget.add_collapsible_content(
+                            "Files used", docs_names_string
+                        )
+
+                chat_text_box.scroll_end(animate=False)
+
+            if ai_widget and acc_response:
+                ai_widget.update_text(acc_response)
                 chat_text_box.scroll_end(animate=False)
 
         except asyncio.CancelledError:
             pass
-        except Exception:
+        except Exception as e:
+            print(e)
             # display error message
             chat_text_box.add_ollama_error_message()
 

@@ -110,7 +110,7 @@ AsciiSpinner {
     width: auto;
     min-width: 40;
     height: auto;         
-    max-height: 15;       
+    max-height: 50vh;       
     background: transparent;
     padding: 0 1;
 }

@@ -7,7 +7,7 @@ from textual import on
 from rag_app.backend.config import ConfigKeys
 from pathlib import Path
 from textual.validation import Function, Length
-from rag_app.backend.db import (
+from rag_app.backend.database import (
     save_workspace_configs,
     remove_all_resources,
 )

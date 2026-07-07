@@ -1,7 +1,7 @@
 # backend/command_handler.py
 from enum import Enum
 from rag_app.backend.config import config
-import rag_app.backend.db as db
+import rag_app.backend.database as db
 from rag_app.backend.rag import clear_chat_history
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType
 from rag_app.frontend.widgets.resources_tree_widget import ResourcesTreeWidget

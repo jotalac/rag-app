@@ -34,3 +34,7 @@ class ResourcesTreeWidget(Tree[str]):
                         built_nodes[current_path_key] = built_nodes[parent_key].add(
                             f"📁 {part}"
                         )
+
+        # show expanded if there are few files
+        if len(self.resources_paths) < 50:
+            self.root.expand_all()

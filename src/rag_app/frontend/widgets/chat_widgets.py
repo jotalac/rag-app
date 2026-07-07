@@ -1,6 +1,6 @@
 from textual.app import ComposeResult
 from textual.events import Mount
-from textual.widgets import Markdown, Static
+from textual.widgets import Markdown, Static, Collapsible, Label
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from enum import Enum
 from pathlib import Path
@@ -24,14 +24,21 @@ class AIMessage(Horizontal):
         self.message = message
 
     def compose(self) -> ComposeResult:
-        formatted_text = f"**{Role.AI.value}**: \n{self.message}"
-        self.md_widget = Markdown(formatted_text, classes="message-bubble")
-        yield self.md_widget
+        with Vertical(classes="message-bubble") as bubble:
+            self.bubble = bubble
+            formatted_text = f"**{Role.AI.value}**: \n{self.message}"
+            self.md_widget = Markdown(formatted_text)
+            yield self.md_widget
 
     def update_text(self, new_text: str) -> None:
         self.message = new_text
         formatted_text = f"**{Role.AI.value}**: \n\n{self.message}"
         self.md_widget.update(formatted_text)
+
+    def add_collapsible_content(self, title: str, content: str) -> None:
+        dimmed_content = f"[dim]{content}[/dim]"
+        collapsible_widget = Collapsible(Label(dimmed_content), collapsed=True, title=title)
+        self.bubble.mount(collapsible_widget, before=self.md_widget)
 
 
 class UserMessage(Horizontal):

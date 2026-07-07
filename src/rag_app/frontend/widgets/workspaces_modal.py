@@ -9,7 +9,7 @@ from pathlib import Path
 from textual.validation import Function, Length
 import uuid
 from rag_app.backend.config import config
-from rag_app.backend.db import (
+from rag_app.backend.database import (
     get_all_workspaces,
     add_workspace,
     exists_workspace_by_name,
@@ -108,8 +108,7 @@ class WorkspaceMenuModal(ModalScreen):
         config.workspace_name = workspace_name
         load_workspace_config(uuid.UUID(option_id))
 
-        if hasattr(self.app, "update_workspace_tag"):
-            self.app.update_workspace_tag()
+        self.app.update_workspace_tag()  # type: ignore
 
         self.dismiss(option_id)
 

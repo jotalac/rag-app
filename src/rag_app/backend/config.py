@@ -88,7 +88,7 @@ class AppConfig:
             self._workspace_id = new_workspace_id
 
     def init_from_db(self) -> None:
-        from rag_app.backend.db import (
+        from rag_app.backend.database import (
             get_configs,
             get_workspace_info,
             add_workspace,
