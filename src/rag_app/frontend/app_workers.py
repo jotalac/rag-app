@@ -60,6 +60,10 @@ class AppWorkers(App):
                         ai_widget.add_collapsible_content(
                             "Files used", docs_names_string
                         )
+                    case AIMessageType.CONTEXT_STRING:
+                        ai_widget.add_collapsible_content(
+                            "Context", str(response_content)
+                        )
 
                 chat_text_box.scroll_end(animate=False)
 

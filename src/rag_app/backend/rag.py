@@ -136,10 +136,10 @@ async def generate_message(user_prompt: str):
             )
             return
 
-        print(f"`Context string: {context_string}`\n")
-
         # list the referenced resources
+        print(context_string)
         yield (AIMessageType.DOC_NAMES, get_context_docs_names(docs))
+        yield (AIMessageType.CONTEXT_STRING, context_string)
 
         full_answer = ""
 

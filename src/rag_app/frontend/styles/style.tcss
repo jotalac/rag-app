@@ -37,7 +37,7 @@
 .message-bubble {
     width: auto;
     height: auto;
-    max-width: 75%;
+    max-width: 90%;
     padding: 1 2;
     border: solid $primary;
     background: $surface;
@@ -64,6 +64,10 @@
     background: $success 20%;
     color: $success;
     border: solid $success;
+}
+
+.ai-collapsible {
+    margin: 1 2;
 }
 
 #cmd-loader {
@@ -116,5 +120,32 @@ AsciiSpinner {
 }
 
 .resource-tree > .tree--label {
+    color: $text;
+}
+/* Fix markdown inside bubble */
+.message-bubble Markdown {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+}
+
+/* Style the collapsible */
+.source-collapsible {
+    width: 100%;
+    height: auto;
+    border: none;
+    background: transparent;
+    margin-bottom: 0;
+    padding-bottom: 1;
+}
+
+
+.source-collapsible CollapsibleTitle {
+    color: $text-muted;
+    text-style: italic;
+    background: transparent;
+}
+
+.source-collapsible CollapsibleTitle:hover {
     color: $text;
 }

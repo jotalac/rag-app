@@ -97,10 +97,16 @@ class WorkspaceMenuModal(ModalScreen):
 
     # when workspace is selected to use
     @on(OptionList.OptionSelected, "#workspace-options")
-    def handle_workspace_selection(self, event: OptionList.OptionSelected) -> None:
+    async def handle_workspace_selection(
+        self, event: OptionList.OptionSelected
+    ) -> None:
         option_id = event.option.id
 
-        if option_id is None or option_id.endswith("-info"):
+        if (
+            option_id is None
+            or option_id.endswith("-info")
+            or option_id == str(config.workspace_id)
+        ):
             return
 
         workspace_name = self.workspaces[option_id][0]
@@ -109,6 +115,7 @@ class WorkspaceMenuModal(ModalScreen):
         load_workspace_config(uuid.UUID(option_id))
 
         self.app.update_workspace_tag()  # type: ignore
+        await self.app.action_clear_chat()  # type: ignore
 
         self.dismiss(option_id)
 

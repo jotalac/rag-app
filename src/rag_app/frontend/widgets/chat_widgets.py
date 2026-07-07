@@ -37,7 +37,12 @@ class AIMessage(Horizontal):
 
     def add_collapsible_content(self, title: str, content: str) -> None:
         dimmed_content = f"[dim]{content}[/dim]"
-        collapsible_widget = Collapsible(Label(dimmed_content), collapsed=True, title=title)
+        collapsible_widget = Collapsible(
+            Label(dimmed_content),
+            collapsed=True,
+            title=title,
+            classes="source-collapsible",
+        )
         self.bubble.mount(collapsible_widget, before=self.md_widget)
 
 

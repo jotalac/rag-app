@@ -190,6 +190,9 @@ Wipes the entire vector database.
 
 ### Other:
 
+**`/workspace`**
+Switch workspace, create new workspace, list all workspaces.
+
 **`/list-resources`**
 Displays a list of all currently indexed files.
 
