@@ -57,9 +57,7 @@ class AppWorkers(App):
                         docs_names_string = "\n".join(
                             [f"📄 {filename}" for filename in response_content]
                         )
-                        ai_widget.add_collapsible_content(
-                            "Files used", docs_names_string
-                        )
+                        ai_widget.add_collapsible_content("Sources", docs_names_string)
                     case AIMessageType.CONTEXT_STRING:
                         ai_widget.add_collapsible_content(
                             "Context", str(response_content)

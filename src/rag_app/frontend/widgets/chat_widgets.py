@@ -37,9 +37,10 @@ class AIMessage(Horizontal):
 
     def add_collapsible_content(self, title: str, content: str) -> None:
         from rich.text import Text
+
         text_obj = Text(content, style="dim")
         collapsible_widget = Collapsible(
-            Label(text_obj),
+            Label(text_obj, classes="collapsible-label"),
             collapsed=True,
             title=title,
             classes="source-collapsible",

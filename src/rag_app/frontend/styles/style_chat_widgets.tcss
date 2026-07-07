@@ -72,3 +72,9 @@
 .source-collapsible CollapsibleTitle:hover {
     color: $text;
 }
+
+.collapsible-label {
+    width: 100%;
+    max-height: 20;
+    overflow: auto;
+}

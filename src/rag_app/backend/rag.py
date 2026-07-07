@@ -6,6 +6,10 @@ from langchain_core.messages import HumanMessage, AIMessage
 from rag_app.backend.config import config
 from pathlib import Path
 from enum import Enum
+from langchain_core.prompts import PromptTemplate
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from langchain_community.document_loaders import WebBaseLoader
+import asyncio
 
 # llm = ChatGoogleGenerativeAI(
 #     model="gemini-3.5-flash",
@@ -23,29 +27,34 @@ class AIMessageType(Enum):
 _chat_history: list[HumanMessage | AIMessage] = []
 MAX_HISTORY_LENGTH = 5
 
-_contextualize_q_system_prompt = """Given a chat history and the latest user question, rewrite the user's question so it is a standalone question that can be understood without the chat history.
-CRITICAL: You MUST replace any pronouns (it, they, this, etc.) or implicit references (like "i" mistakenly used for "it") with the specific noun or topic from the chat history.
-Do NOT answer the question. ONLY output the rewritten question."""
+_contextualize_q_system_prompt = """
+Rewrite the last user message so it can be understood without the previous conversation.
 
-_contextualize_q_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", _contextualize_q_system_prompt),
-        (
-            "human", 
-            "Chat History:\nHuman: What is a log widget?\nAI: It is a widget.\n\nLatest Question: give me code for it\n\nStandalone Question:"
-        ),
-        ("assistant", "Give me code for the log widget."),
-        (
-            "human", 
-            "Chat History:\nHuman: What is Ktor?\nAI: Ktor is a framework.\n\nLatest Question: can i be used for web server\n\nStandalone Question:"
-        ),
-        ("assistant", "Can Ktor be used as a web server?"),
-        (
-            "human",
-            "Chat History:\n{chat_history_str}\n\nLatest Question: {input}\n\nStandalone Question:",
-        ),
-    ]
-)
+Do not answer it.
+
+Return only the rewritten question.
+"""
+
+# _contextualize_q_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", _contextualize_q_system_prompt),
+#         MessagesPlaceholder("chat_history"),
+#         ("human", "{input}"),
+#     ]
+# )
+_contextualize_q_prompt = PromptTemplate.from_template("""Previous conversation:
+
+{chat_history}
+
+Last user message:
+{input}
+
+Rewrite the last user message into a standalone question.
+
+Do not answer.
+
+Rewritten question:""")
+
 
 _qa_system_prompt = """You are a helpful assistant. Answer the user's question using ONLY the provided context below.
 If the context doesn't contain the answer, say "I cannot find that information in the uploaded documents. 
@@ -59,10 +68,11 @@ Context:
 _qa_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", _qa_system_prompt),
-        MessagesPlaceholder("chat_history"),
         ("human", "{input}"),
     ]
 )
+
+_web_search = DuckDuckGoSearchAPIWrapper()
 
 
 def manage_history_window():
@@ -80,85 +90,125 @@ def format_docs(docs: list[Document]) -> str:
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-def get_context_docs_names(docs: list[Document]) -> set[str]:
+def get_context_docs_names(docs: list[Document], is_remote: bool) -> set[str]:
     all_referenced_files = set()
     for doc in docs:
         source_path = doc.metadata.get("source")
         if source_path:
             all_referenced_files.add(
                 str(Path(source_path).relative_to(config.resources_dir))
+                if not is_remote
+                else source_path
             )
 
     return all_referenced_files
 
 
 async def get_docs_context(user_prompt: str) -> list[Document]:
-    question_rewriter = _contextualize_q_prompt | config.llm | StrOutputParser()
+    if not _chat_history:
+        query = user_prompt
+    else:
+        question_rewriter = (
+            _contextualize_q_prompt
+            | config.llm.with_config(configurable={"temperature": 0})
+            | StrOutputParser()
+        )
 
-    chat_history_str = "\n".join(
-        [
-            (
-                f"Human: {msg.content}"
-                if isinstance(msg, HumanMessage)
-                else f"AI: {msg.content}"
+        query = await question_rewriter.ainvoke(
+            {"chat_history": _chat_history, "input": user_prompt}
+        )
+
+    print(f"`Message for the docs: {query}`\n")
+
+    return await get_retriever().ainvoke(query)
+
+
+async def get_web_context(user_prompt: str) -> list[Document]:
+    search_results = _web_search.results(user_prompt, max_results=3)
+
+    urls_to_scrape = []
+    fallback_docs = []
+
+    for result in search_results:
+        if "link" in result:
+            urls_to_scrape.append(result["link"])
+
+            fallback_docs.append(
+                Document(
+                    page_content=result["snippet"],
+                    metadata={"source": result["link"], "title": result["title"]},
+                )
             )
-            for msg in _chat_history
-        ]
-    )
 
-    question_for_docs = await question_rewriter.ainvoke(
-        {"chat_history_str": chat_history_str, "input": user_prompt}
-    )
+    if not urls_to_scrape:
+        return []
 
-    print(f"`Message for the docs: {question_for_docs}`\n")
+    print(f"Scraping URLs: {urls_to_scrape}")
 
-    return await get_retriever().ainvoke(question_for_docs)
+    try:
+        loader = WebBaseLoader(urls_to_scrape)
+
+        # THE FIX: Offload the synchronous load() to a background thread!
+        # This prevents the UI from freezing AND avoids the asyncio.run() crash.
+        scraped_docs = await asyncio.to_thread(loader.load)
+
+        web_docs = []
+        for i, doc in enumerate(scraped_docs):
+            clean_text = " ".join(doc.page_content.split())
+            doc.page_content = clean_text[:3000]
+            doc.metadata["source"] = urls_to_scrape[i]
+            web_docs.append(doc)
+
+        return web_docs
+
+    except Exception as e:
+        print(f"Web scraping failed, falling back to snippets: {e}")
+        return fallback_docs
 
 
 async def generate_message(user_prompt: str):
     try:
-        answer_generator = _qa_prompt | config.llm | StrOutputParser()
-
         docs = await get_docs_context(user_prompt)
-        context_string = format_docs(docs)
+        used_web_search = False
 
-        # later there will be some setting to check if the user want to generate messages even when nothing was found in the rag
-        if not context_string:
-            # context_string = """
-            # No data was found with the RAG, nothing in the saved documents,
-            # so generate the best answer you can without the resouces,
-            # or just answer that you dont know.
-            # """
-            yield (
-                AIMessageType.TEXT,
-                "I couldn't find any specific information in your documents related to that query",
-            )
+        # if the web search is disabled
+        if not docs and False:
+            response = "I couldn't find any specific information in your documents related to that query."
+            _chat_history.append(HumanMessage(user_prompt))
+            _chat_history.append(AIMessage(response))
+            manage_history_window()
+
+            yield (AIMessageType.TEXT, response)
             return
 
-        # list the referenced resources
-        print(context_string)
-        yield (AIMessageType.DOC_NAMES, get_context_docs_names(docs))
+        if not docs:
+            yield (
+                AIMessageType.TEXT,
+                "*🌐 No local results, doing web search...*\n\n",
+            )
+            docs = await get_web_context(user_prompt)
+            used_web_search = True
+
+        context_string = format_docs(docs)
+
+        yield (AIMessageType.DOC_NAMES, get_context_docs_names(docs, used_web_search))
         yield (AIMessageType.CONTEXT_STRING, context_string)
+
+        answer_generator = _qa_prompt | config.llm | StrOutputParser()
 
         full_answer = ""
 
         async for chunk in answer_generator.astream(
             {
                 "context": context_string,
-                "chat_history": _chat_history,
                 "input": user_prompt,
             }
         ):
-            if not chunk:
-                return
-
             full_answer += chunk
             yield (AIMessageType.TEXT, chunk)
 
-        # add the new response to the history
         _chat_history.append(HumanMessage(user_prompt))
         _chat_history.append(AIMessage(full_answer))
-
         manage_history_window()
 
     except Exception as e:

@@ -22,6 +22,7 @@ dependencies = [
     "chromadb>=1.5.9",
     "bs4>=0.0.2",
     "lxml>=6.1.1",
+    "ddgs>=9.14.4",
 ]
 
 [project.scripts]
