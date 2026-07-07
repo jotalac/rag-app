@@ -23,39 +23,27 @@ class AIMessageType(Enum):
 _chat_history: list[HumanMessage | AIMessage] = []
 MAX_HISTORY_LENGTH = 5
 
-_contextualize_q_system_prompt = """You are not a conversational assistant. You are a strict linguistic text processor.
-Your ONLY job is to read the chat history and rewrite the final user question so it is a standalone sentence.
-Do not engage in conversation. Do not answer the question. Do not explain yourself. Output NOTHING but the rewritten question.
-If there are is no subject in the sentence, rewrite it with the noun from the context.
-
-EXAMPLES:
-
-History: 
-Human: What is Python?
-AI: Python is a popular programming language.
-Question: Is it hard to learn?
-Output: Is Python hard to learn?
-
-History: 
-Human: What is the capital of France?
-AI: Paris.
-Question: What is a variable in programming?
-Output: What is a variable in programming?
-
-History:
-Human: How do I install dependencies?
-AI: You can use pip or uv.
-Question: Which one is faster?
-Output: Which dependency manager is faster, pip or uv?
-
-Now process the following real input.
-"""
+_contextualize_q_system_prompt = """Given a chat history and the latest user question, rewrite the user's question so it is a standalone question that can be understood without the chat history.
+CRITICAL: You MUST replace any pronouns (it, they, this, etc.) or implicit references (like "i" mistakenly used for "it") with the specific noun or topic from the chat history.
+Do NOT answer the question. ONLY output the rewritten question."""
 
 _contextualize_q_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", _contextualize_q_system_prompt),
-        MessagesPlaceholder("chat_history"),
-        ("human", "Question: {input}\nOutput:"),
+        (
+            "human", 
+            "Chat History:\nHuman: What is a log widget?\nAI: It is a widget.\n\nLatest Question: give me code for it\n\nStandalone Question:"
+        ),
+        ("assistant", "Give me code for the log widget."),
+        (
+            "human", 
+            "Chat History:\nHuman: What is Ktor?\nAI: Ktor is a framework.\n\nLatest Question: can i be used for web server\n\nStandalone Question:"
+        ),
+        ("assistant", "Can Ktor be used as a web server?"),
+        (
+            "human",
+            "Chat History:\n{chat_history_str}\n\nLatest Question: {input}\n\nStandalone Question:",
+        ),
     ]
 )
 
@@ -107,8 +95,19 @@ def get_context_docs_names(docs: list[Document]) -> set[str]:
 async def get_docs_context(user_prompt: str) -> list[Document]:
     question_rewriter = _contextualize_q_prompt | config.llm | StrOutputParser()
 
+    chat_history_str = "\n".join(
+        [
+            (
+                f"Human: {msg.content}"
+                if isinstance(msg, HumanMessage)
+                else f"AI: {msg.content}"
+            )
+            for msg in _chat_history
+        ]
+    )
+
     question_for_docs = await question_rewriter.ainvoke(
-        {"chat_history": _chat_history, "input": user_prompt}
+        {"chat_history_str": chat_history_str, "input": user_prompt}
     )
 
     print(f"`Message for the docs: {question_for_docs}`\n")

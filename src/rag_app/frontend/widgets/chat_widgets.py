@@ -36,9 +36,10 @@ class AIMessage(Horizontal):
         self.md_widget.update(formatted_text)
 
     def add_collapsible_content(self, title: str, content: str) -> None:
-        dimmed_content = f"[dim]{content}[/dim]"
+        from rich.text import Text
+        text_obj = Text(content, style="dim")
         collapsible_widget = Collapsible(
-            Label(dimmed_content),
+            Label(text_obj),
             collapsed=True,
             title=title,
             classes="source-collapsible",
