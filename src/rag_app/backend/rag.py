@@ -58,7 +58,7 @@ Rewritten question:""")
 
 _qa_system_prompt = """You are a helpful assistant. Answer the user's question using ONLY the provided context below.
 If the context doesn't contain the answer, say "I cannot find that information in the uploaded documents. 
-Generate output formatted in markdown for nicer visuals."
+Generate output heavily formatted in markdown for nicer visuals."
 
 
 Context:
@@ -86,7 +86,15 @@ def manage_history_window():
         _chat_history = _chat_history[-max_messages:]
 
 
+def add_message_to_history(human_message: str, ai_message: str):
+    _chat_history.append(HumanMessage(human_message))
+    _chat_history.append(AIMessage(ai_message))
+    manage_history_window()
+
+
 def format_docs(docs: list[Document]) -> str:
+    return_string = "\n\n".join(doc.page_content for doc in docs)
+    print(return_string)
     return "\n\n".join(doc.page_content for doc in docs)
 
 
@@ -105,7 +113,7 @@ def get_context_docs_names(docs: list[Document], is_remote: bool) -> set[str]:
 
 
 async def get_docs_context(user_prompt: str) -> list[Document]:
-    if not _chat_history:
+    if not _chat_history or not config.use_chat_history:
         query = user_prompt
     else:
         question_rewriter = (
@@ -171,17 +179,17 @@ async def generate_message(user_prompt: str):
         docs = await get_docs_context(user_prompt)
         used_web_search = False
 
-        # if the web search is disabled
-        if not docs and False:
-            response = "I couldn't find any specific information in your documents related to that query."
-            _chat_history.append(HumanMessage(user_prompt))
-            _chat_history.append(AIMessage(response))
-            manage_history_window()
-
-            yield (AIMessageType.TEXT, response)
-            return
-
         if not docs:
+            # no documents were found and web search is disabled
+            if not config.use_web_search:
+                response = "I couldn't find any specific information in your documents related to that query. (web search is disabled)"
+                if config.use_chat_history:
+                    add_message_to_history(user_prompt, response)
+
+                yield (AIMessageType.TEXT, response)
+                return
+
+            # do the web search
             yield (
                 AIMessageType.TEXT,
                 "*🌐 No local results, doing web search...*\n\n",

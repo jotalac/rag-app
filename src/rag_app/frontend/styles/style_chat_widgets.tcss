@@ -75,6 +75,5 @@
 
 .collapsible-label {
     width: 100%;
-    max-height: 20;
     overflow: auto;
 }

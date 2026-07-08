@@ -45,7 +45,7 @@ def get_retriever():
     """Builds a retriever dynamically from the fresh vector db."""
     return get_vector_db().as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": 5, "score_threshold": 0.5},
+        search_kwargs={"k": config.k_value, "score_threshold": 0.5},
     )
 
 

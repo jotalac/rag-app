@@ -11,6 +11,9 @@ class ConfigKeys(Enum):
     GEN_MODEL = "generation_model"
     EMBED_MODEL = "embedding_model"
     WORKSPACE_NAME = "active_workspace_id"
+    USE_CHAT_HISTORY = "use_chat_history"
+    USE_WEB_SEARCH = "use_web_search"
+    K_VALUE = "k_value"
 
 
 class AppConfig:
@@ -33,6 +36,11 @@ class AppConfig:
 
         self._workspace_name = "default"
         self._workspace_id: uuid.UUID | None = None
+
+        self._use_chat_history = False
+        self._use_web_search = False
+
+        self._k_value = 5
 
     # generational model
     @property
@@ -87,6 +95,32 @@ class AppConfig:
         else:
             self._workspace_id = new_workspace_id
 
+    # global config
+    @property
+    def use_chat_history(self) -> bool:
+        return self._use_chat_history
+
+    @use_chat_history.setter
+    def use_chat_history(self, new_val: bool) -> None:
+        self._use_chat_history = new_val
+
+    @property
+    def use_web_search(self) -> bool:
+        return self._use_web_search
+
+    @use_web_search.setter
+    def use_web_search(self, new_val: bool) -> None:
+        self._use_web_search = new_val
+
+    @property
+    def k_value(self) -> int:
+        return self._k_value
+
+    @k_value.setter
+    def k_value(self, new_val: int) -> None:
+        if new_val in range(2, 21):
+            self._k_value = int(new_val)
+
     def init_from_db(self) -> None:
         from rag_app.backend.database import (
             get_configs,
@@ -97,12 +131,26 @@ class AppConfig:
         # configs init
         keys_to_fetch = [
             ConfigKeys.WORKSPACE_NAME.value,
+            ConfigKeys.USE_CHAT_HISTORY.value,
+            ConfigKeys.USE_WEB_SEARCH.value,
+            ConfigKeys.K_VALUE.value,
         ]
 
         configs = get_configs(keys_to_fetch)
 
         if ConfigKeys.WORKSPACE_NAME.value in configs:
             config.workspace_name = configs[ConfigKeys.WORKSPACE_NAME.value]
+
+        if ConfigKeys.USE_CHAT_HISTORY.value in configs:
+            val = configs[ConfigKeys.USE_CHAT_HISTORY.value]
+            config.use_chat_history = str(val).lower() in ("true", "1")
+
+        if ConfigKeys.USE_WEB_SEARCH.value in configs:
+            val = configs[ConfigKeys.USE_WEB_SEARCH.value]
+            config.use_web_search = str(val).lower() in ("true", "1")
+
+        if ConfigKeys.K_VALUE.value in configs:
+            config.k_value = int(configs[ConfigKeys.K_VALUE.value])
 
         # workspace init
 

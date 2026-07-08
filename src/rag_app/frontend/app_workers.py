@@ -3,7 +3,6 @@ from textual.worker import get_current_worker
 import asyncio
 from typing import TYPE_CHECKING
 from rag_app.frontend.command_handler import Commands, handle_command
-from textual.worker import Worker, get_current_worker
 from rag_app.backend.rag import generate_message, AIMessageType
 from rag_app.frontend.widgets.custom_spinner import CustomSpinner
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType

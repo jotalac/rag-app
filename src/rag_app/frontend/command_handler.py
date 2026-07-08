@@ -15,7 +15,7 @@ class Commands(Enum):
     REMOVE_RESOURCES_DIR = "/remove-resources-dir"
     REMOVE_RESOURCES_ALL = "/remove-resources-all"
     LIST_RESOURCES = "/list-resources"
-    CLEAR_MEMORY = "/clear-memory"
+    CLEAR_HISTORY = "/clear-history"
     WORKSPACE = "/workspace"
     CONFIG = "/config"
     HELP = "/help"
@@ -153,7 +153,7 @@ def _handle_clear_history(args: list[str] | None):
 
 
 def _handle_help(args: list[str] | None):
-    help_text = """
+    help_text = f"""
 # RAG APP
 Ask questions about your resources.
         
@@ -163,49 +163,52 @@ _*all file paths are relative to the **resources directory**_
 
 
 
-**`/config`**
+**`{Commands.CONFIG.value}`**
 Open application config.
+
+---
 
 ### Adding resources:
 
-**`/add-resources [file1] [file2]...`**
+**`{Commands.ADD_RESOURCES.value} [file1] [file2]...`**
 Embeds specific files into the database.
 
-
-**`/add-resources-dir [folder]`**
+**`{Commands.ADD_RESOURCES_DIR.value} [folder]`**
 Recursively embeds all files within a specific folder.
 
+\n
 ### Removing resources:
 
-**`/remove-resources [file1] [file2]...`**
+**`{Commands.REMOVE_RESOURCES.value} [file1] [file2]...`**
 Deletes specific files from the database.
 
 
-**`/remove-resources-dir [folder]...`**
+**`{Commands.REMOVE_RESOURCES_DIR.value} [folder]...`**
 Recursively deletes all files within a specific folder.
 
 
-**`/remove-resources-all`**
+**`{Commands.REMOVE_RESOURCES_ALL.value}`**
 Wipes the entire vector database.
 
+\n
 ### Other:
 
-**`/workspace`**
+**`{Commands.WORKSPACE.value}`**
 Switch workspace, create new workspace, list all workspaces.
 
-**`/list-resources`**
+**`{Commands.LIST_RESOURCES.value}`**
 Displays a list of all currently indexed files.
 
 
-**`/clear-memory`**
+**`{Commands.CLEAR_HISTORY.value}`**
 Wipes the conversational chat history so the previous messages will be forgotten.
 
 
-**`/help`**
+**`{Commands.HELP.value}`**
 Displays this help message.
 
 
-**`/exit`**
+**`{Commands.EXIT.value}`**
 Closes the application.
 """
     yield (SystemMessageType.INFO, help_text.strip())
@@ -219,7 +222,7 @@ COMMAND_REGISTRY = {
     Commands.REMOVE_RESOURCES_ALL.value: _handle_remove_resources_all,
     Commands.LIST_RESOURCES.value: _handle_list_resources,
     Commands.HELP.value: _handle_help,
-    Commands.CLEAR_MEMORY.value: _handle_clear_history,
+    Commands.CLEAR_HISTORY.value: _handle_clear_history,
 }
 
 

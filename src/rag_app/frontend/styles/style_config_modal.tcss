@@ -33,12 +33,21 @@ ConfigModal {
     width: 1fr;
 }
 
+#k-label{
+    width: auto;
+}
+
+#k-input{
+    width: 1fr;
+    max-width: 20;
+}
+
 .config-row Select {
     width: 25;
 }
 
 #config-actions {
-    margin-top: 1;
+    margin-top: 2;
     align: center middle;
     height: auto;
 }
@@ -52,4 +61,64 @@ ConfigModal {
     content-align: left middle;
     color: $text-muted;
     text-style: italic;
+    margin-top: 1;
+}
+
+/* Polished Collapsible */
+.config-collapsible {
+    width: 100%;
+    height: auto;
+    border: none;
+    padding: 1;
+}
+
+
+.config-collapsible CollapsibleTitle {
+    text-style: bold;
+    color: $text;
+    background: transparent;
+}
+
+.config-collapsible CollapsibleTitle:hover {
+    color: $primary;
+}
+
+.config-checkbox {
+    background: $surface-lighten-1;
+    border: none;
+    margin-bottom: 1;
+    padding: 1;
+    color: gray;
+}
+
+.config-checkbox:focus {
+    border: solid $primary;
+    padding: 0
+}
+
+.config-checkbox:focus > .toggle--label {
+    background: transparent;
+    text-style: none;
+    color: gray;
+}
+
+.config-checkbox.-on:focus > .toggle--label {
+    color: $text;
+}
+
+.config-checkbox > .toggle--button {
+    color: gray;
+}
+
+.config-checkbox.-on > .toggle--button {
+    color: $primary;
+    text-style: bold;
+}
+
+.config-checkbox > .toggle--label {
+    color: gray;
+}
+
+.config-checkbox.-on > .toggle--label {
+    color: $text;
 }
