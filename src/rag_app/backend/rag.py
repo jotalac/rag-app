@@ -10,6 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from langchain_community.document_loaders import WebBaseLoader
 import asyncio
+from fake_useragent import UserAgent
 
 # llm = ChatGoogleGenerativeAI(
 #     model="gemini-3.5-flash",
@@ -154,10 +155,19 @@ async def get_web_context(user_prompt: str) -> list[Document]:
     print(f"Scraping URLs: {urls_to_scrape}")
 
     try:
-        loader = WebBaseLoader(urls_to_scrape)
+        # create fake user agent for the search
+        ua = UserAgent()
+        random_header = ua.random
 
-        # THE FIX: Offload the synchronous load() to a background thread!
-        # This prevents the UI from freezing AND avoids the asyncio.run() crash.
+        loader = WebBaseLoader(
+            web_paths=urls_to_scrape,
+            header_template={
+                "User-Agent": random_header,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+            },
+        )
+
         scraped_docs = await asyncio.to_thread(loader.load)
 
         web_docs = []

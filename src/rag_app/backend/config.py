@@ -16,6 +16,10 @@ class ConfigKeys(Enum):
     K_VALUE = "k_value"
 
 
+# user agent for duckduck go search
+os.environ["USER_AGENT"] = "RagApp"
+
+
 class AppConfig:
     def __init__(self):
         self.user_home_path = Path.home()
