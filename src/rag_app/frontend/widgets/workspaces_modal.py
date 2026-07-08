@@ -74,6 +74,7 @@ class WorkspaceMenuModal(ModalScreen):
 
             yield Horizontal(
                 Label(r"\[x] - delete workspace", classes="label-warning"),
+                Static("", classes="spacer"),
                 Label(r"\[Enter] - activate workspace", classes="label-note"),
                 id="notes-horizontal",
             )
