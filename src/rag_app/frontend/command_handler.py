@@ -20,6 +20,7 @@ class Commands(Enum):
     CONFIG = "/config"
     HELP = "/help"
     EXIT = "/exit"
+    THEME = "/theme"
 
 
 def _add_resource(resource_name: str) -> tuple[SystemMessageType, str]:
@@ -207,6 +208,8 @@ Wipes the conversational chat history so the previous messages will be forgotten
 **`{Commands.HELP.value}`**
 Displays this help message.
 
+**`{Commands.THEME.value}`**
+Open the theme selection menu.
 
 **`{Commands.EXIT.value}`**
 Closes the application.

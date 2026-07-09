@@ -8,6 +8,7 @@ from rag_app.frontend.widgets.chat_widgets import AIMessage
 from rag_app.frontend.widgets.chat_widgets import SystemMessageType, WelcomeMessage
 from rag_app.frontend.widgets.config_modal import ConfigModal
 from rag_app.frontend.widgets.workspaces_modal import WorkspaceMenuModal
+from rag_app.frontend.widgets.theme_menu import ThemeMenu
 from rag_app.backend.config import config
 from rag_app.backend.database.config_repo import save_configs
 from rag_app.backend.config import ConfigKeys
@@ -121,6 +122,9 @@ class RagApp(AppWorkers):
 
     def action_open_workspace_menu(self) -> None:
         self.push_screen(WorkspaceMenuModal())
+
+    def action_open_theme_menu(self) -> None:
+        self.push_screen(ThemeMenu())
 
     def add_welcome_text(self) -> None:
         self.query_one(ChatText).mount(WelcomeMessage())

@@ -21,6 +21,10 @@ def route_user_input(app: "RagApp", user_prompt: str, chat_text_box: ChatText) -
         app.action_open_workspace_menu()
         return
 
+    if user_prompt == Commands.THEME.value:
+        app.action_open_theme_menu()
+        return
+
     # backend commands
     if user_prompt.startswith("/"):
         app.is_working = True

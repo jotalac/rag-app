@@ -1,0 +1,48 @@
+ThemeMenu {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.65);
+}
+
+#theme-dialog {
+    width: auto;
+    min-width: 40;
+    max-width: 60;
+    height: auto;
+    max-height: 90;
+    padding: 1 4;
+    background: $surface;
+    border: double $secondary;
+}
+
+.theme-menu-title {
+    width: 100%;
+    text-align: center;
+    text-style: bold;
+    margin-top: 1;
+    margin-bottom: 1;
+    color: $primary;
+}
+
+#theme-list {
+    max-height: 20;
+    background: $boost;
+    border: none;
+    margin-bottom: 1;
+    padding: 1 1;
+}
+
+#theme-list > .option-list--option {
+    padding: 0 1;
+    color: $text-muted;
+}
+
+#theme-list > .option-list--option-hover {
+    background: $surface-lighten-1;
+    color: $text;
+}
+
+#theme-list > .option-list--option-highlighted {
+    background: $secondary-background;
+    color: $text;
+    text-style: bold;
+}
