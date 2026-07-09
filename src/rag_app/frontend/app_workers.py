@@ -26,7 +26,6 @@ class AppWorkers(App):
     async def fetch_ai_response(
         self, user_prompt: str, chat_text_box: ChatText
     ) -> None:
-        worker = get_current_worker()
         acc_response = ""
 
         ai_widget = self.active_ai_widget

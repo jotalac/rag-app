@@ -85,12 +85,6 @@ rag-app
 - Smaller models might struggle if the resources are not in English.
 - If no relevant data is retrieved from the vector database, generation won't start, and you will see a info message.
 
-## Current Limitations
-
-- **Language Support:** For smaller models, querying in languages other than English often yields poor or hallucinated results.
-- **Thinking Models:** Thinking output is not currently visible.
-
-
 ## To-do
 
 - Add support for importing resources directly from web URLs.
