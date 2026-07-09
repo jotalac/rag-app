@@ -43,6 +43,9 @@ class AppWorkers(App):
                 response_type, response_content = response
 
                 match response_type:
+                    case AIMessageType.REASONING:
+                        ai_widget.update_reasoning_message(str(response_content))
+
                     case AIMessageType.TEXT:
                         # append the new generated chunk
                         acc_response += str(response_content)

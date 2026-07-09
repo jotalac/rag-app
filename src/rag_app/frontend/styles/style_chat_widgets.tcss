@@ -77,3 +77,8 @@
     width: 100%;
     overflow: auto;
 }
+
+.reasoning-label {
+    color: $text-muted;
+    opacity: 80%;
+}

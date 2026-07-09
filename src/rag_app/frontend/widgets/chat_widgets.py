@@ -5,6 +5,7 @@ from textual.containers import VerticalScroll, Vertical, Horizontal
 from enum import Enum
 from pathlib import Path
 from rag_app.backend.config import config
+from rich.text import Text
 
 
 class Role(Enum):
@@ -22,30 +23,50 @@ class AIMessage(Horizontal):
     def __init__(self, message: str, **kwargs):
         super().__init__(classes=f"message-row {Role.AI.name.lower()}", **kwargs)
         self.message = message
+        self.reasoning_message = ""
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="message-bubble") as bubble:
             self.bubble = bubble
             formatted_text = f"**{Role.AI.value}**: \n{self.message}"
-            self.md_widget = Markdown(formatted_text)
-            yield self.md_widget
+            self.md_widget_output = Markdown(formatted_text)
+            yield self.md_widget_output
 
     def update_text(self, new_text: str) -> None:
         self.message = new_text
         formatted_text = f"**{Role.AI.value}**: \n\n{self.message}"
-        self.md_widget.update(formatted_text)
+        self.md_widget_output.update(formatted_text)
 
-    def add_collapsible_content(self, title: str, content: str) -> None:
-        from rich.text import Text
+    def update_reasoning_message(self, new_chunk: str) -> None:
+        self.reasoning_message += new_chunk
+        if not hasattr(self, "reasoning_label"):
+
+            self.reasoning_label = Markdown(
+                self.reasoning_message, classes="collapsible-label reasoning-label"
+            )
+            collapsible_widget = Collapsible(
+                self.reasoning_label,
+                collapsed=False,
+                title="Reasoning",
+                classes="source-collapsible reasoning-collapsible",
+            )
+            self.bubble.mount(collapsible_widget, before=self.md_widget_output)
+        else:
+
+            self.reasoning_label.update(self.reasoning_message)
+
+    def add_collapsible_content(
+        self, title: str, content: str, additional_classes: str = ""
+    ) -> None:
 
         text_obj = Text(content, style="dim")
         collapsible_widget = Collapsible(
             Label(text_obj, classes="collapsible-label"),
             collapsed=True,
             title=title,
-            classes="source-collapsible",
+            classes=f"source-collapsible {additional_classes.strip()}",
         )
-        self.bubble.mount(collapsible_widget, before=self.md_widget)
+        self.bubble.mount(collapsible_widget, before=self.md_widget_output)
 
 
 class UserMessage(Horizontal):

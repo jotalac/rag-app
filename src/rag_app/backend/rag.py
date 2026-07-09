@@ -20,6 +20,7 @@ from fake_useragent import UserAgent
 
 class AIMessageType(Enum):
     TEXT = "message"
+    REASONING = "reasoning"
     DOC_NAMES = "doc_names"
     CONTEXT_STRING = "context_string"
 
@@ -212,7 +213,7 @@ async def generate_message(user_prompt: str):
         yield (AIMessageType.DOC_NAMES, get_context_docs_names(docs, used_web_search))
         yield (AIMessageType.CONTEXT_STRING, context_string)
 
-        answer_generator = _qa_prompt | config.llm | StrOutputParser()
+        answer_generator = _qa_prompt | config.llm
 
         full_answer = ""
 
@@ -222,14 +223,21 @@ async def generate_message(user_prompt: str):
                 "input": user_prompt,
             }
         ):
-            full_answer += chunk
-            yield (AIMessageType.TEXT, chunk)
+            reasoning_output = chunk.additional_kwargs.get("reasoning_content")
+            if reasoning_output:
+                yield (AIMessageType.REASONING, reasoning_output)
+
+            output_content = chunk.content
+            if output_content:
+                full_answer += str(output_content)
+                yield (AIMessageType.TEXT, output_content)
 
         _chat_history.append(HumanMessage(user_prompt))
         _chat_history.append(AIMessage(full_answer))
         manage_history_window()
 
     except Exception as e:
+        print("herere error ")
         print(e)
 
 

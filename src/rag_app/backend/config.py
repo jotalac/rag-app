@@ -35,7 +35,7 @@ class AppConfig:
         self._gen_model = "llama3.2:3b"
         self._embed_model = "nomic-embed-text"
 
-        self.llm = ChatOllama(model=self._gen_model, temperature=0.0)
+        self.llm = self._build_llm()
         self.embeddings = OllamaEmbeddings(model=self._embed_model)
 
         self._workspace_name = "default"
@@ -46,6 +46,13 @@ class AppConfig:
 
         self._k_value = 5
 
+    def _build_llm(self) -> ChatOllama:
+        return ChatOllama(
+            model=self._gen_model,
+            temperature=0.0,
+            reasoning=True,
+        )
+
     # generational model
     @property
     def gen_model(self) -> str:
@@ -55,7 +62,7 @@ class AppConfig:
     def gen_model(self, new_model: str) -> None:
         self._gen_model = new_model
         # Rebuild llm when model changes
-        self.llm = ChatOllama(model=self._gen_model, temperature=0.0)
+        self.llm = self._build_llm()
 
     # resources directory
     @property
