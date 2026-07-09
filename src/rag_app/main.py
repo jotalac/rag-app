@@ -9,6 +9,8 @@ from rag_app.frontend.widgets.chat_widgets import SystemMessageType, WelcomeMess
 from rag_app.frontend.widgets.config_modal import ConfigModal
 from rag_app.frontend.widgets.workspaces_modal import WorkspaceMenuModal
 from rag_app.backend.config import config
+from rag_app.backend.database.config_repo import save_configs
+from rag_app.backend.config import ConfigKeys
 from rag_app.frontend.app_workers import AppWorkers
 from textual.worker import Worker, get_current_worker
 from rag_app.frontend.widgets.resources_tree_widget import ResourcesTreeWidget
@@ -21,11 +23,10 @@ class RagApp(AppWorkers):
         "frontend/styles/style_chat_widgets.tcss",
         "frontend/styles/style_welcome.tcss",
         "frontend/styles/style_resource_tree.tcss",
-        "frontend/styles/style_custom_spinner.tcss"
+        "frontend/styles/style_custom_spinner.tcss",
     ]
 
     BINDINGS = [
-        ("d", "toggle_dark", "Toggle dark mode"),
         ("/", "focus_input", "Focus input"),
         ("escape", "unfocus_input", "Unfocus input"),
         ("ctrl+l", "clear_chat", "Clear chat"),
@@ -58,6 +59,8 @@ class RagApp(AppWorkers):
         self.add_welcome_text()
         self.action_focus_input()
 
+        self.theme = config.theme_name
+
     def update_workspace_tag(self):
         try:
             from textual.widgets import Label
@@ -71,10 +74,10 @@ class RagApp(AppWorkers):
         config.init_from_db()
 
     # ACTIONS
-    def action_toggle_dark(self) -> None:
-        self.theme = (
-            "textual-dark" if self.theme == "textual-light" else "textual-light"
-        )
+    def watch_theme(self, new_theme: str) -> None:
+        print(f"new theme set {new_theme}")
+        if save_configs({ConfigKeys.THEME_NAME.value: new_theme}):
+            config.theme_name = new_theme
 
     def action_focus_input(self) -> None:
         text_input = self.query_one(PromptInput)

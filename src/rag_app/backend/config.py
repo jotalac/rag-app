@@ -11,6 +11,7 @@ class ConfigKeys(Enum):
     GEN_MODEL = "generation_model"
     EMBED_MODEL = "embedding_model"
     WORKSPACE_NAME = "active_workspace_id"
+    THEME_NAME = "theme_name"
     USE_CHAT_HISTORY = "use_chat_history"
     USE_WEB_SEARCH = "use_web_search"
     K_VALUE = "k_value"
@@ -30,12 +31,14 @@ class AppConfig:
         self.default_resources_dir = self.user_home_path / "rag-app-documents"
         self.default_resources_dir.mkdir(parents=True, exist_ok=True)
 
+        self._theme_name = "textual-dark"
+
         self._resources_dir = self.default_resources_dir
 
         self._gen_model = "llama3.2:3b"
         self._embed_model = "nomic-embed-text"
 
-        self.llm = self._build_llm()
+        self.llm = self.build_llm()
         self.embeddings = OllamaEmbeddings(model=self._embed_model)
 
         self._workspace_name = "default"
@@ -46,12 +49,20 @@ class AppConfig:
 
         self._k_value = 5
 
-    def _build_llm(self) -> ChatOllama:
+    def build_llm(self, reasoning: bool = True) -> ChatOllama:
         return ChatOllama(
             model=self._gen_model,
             temperature=0.0,
-            reasoning=True,
+            reasoning=reasoning,
         )
+
+    @property
+    def theme_name(self) -> str:
+        return self._theme_name
+
+    @theme_name.setter
+    def theme_name(self, new_theme: str) -> None:
+        self._theme_name = new_theme
 
     # generational model
     @property
@@ -62,7 +73,7 @@ class AppConfig:
     def gen_model(self, new_model: str) -> None:
         self._gen_model = new_model
         # Rebuild llm when model changes
-        self.llm = self._build_llm()
+        self.llm = self.build_llm()
 
     # resources directory
     @property
@@ -145,6 +156,7 @@ class AppConfig:
             ConfigKeys.USE_CHAT_HISTORY.value,
             ConfigKeys.USE_WEB_SEARCH.value,
             ConfigKeys.K_VALUE.value,
+            ConfigKeys.THEME_NAME.value,
         ]
 
         configs = get_configs(keys_to_fetch)
@@ -162,6 +174,9 @@ class AppConfig:
 
         if ConfigKeys.K_VALUE.value in configs:
             config.k_value = int(configs[ConfigKeys.K_VALUE.value])
+
+        if ConfigKeys.THEME_NAME.value in configs:
+            config.theme_name = configs[ConfigKeys.THEME_NAME.value]
 
         # workspace init
 

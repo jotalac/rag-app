@@ -213,24 +213,45 @@ async def generate_message(user_prompt: str):
         yield (AIMessageType.DOC_NAMES, get_context_docs_names(docs, used_web_search))
         yield (AIMessageType.CONTEXT_STRING, context_string)
 
-        answer_generator = _qa_prompt | config.llm
-
+        generator = _qa_prompt | config.llm
         full_answer = ""
 
-        async for chunk in answer_generator.astream(
-            {
-                "context": context_string,
-                "input": user_prompt,
-            }
-        ):
-            reasoning_output = chunk.additional_kwargs.get("reasoning_content")
-            if reasoning_output:
-                yield (AIMessageType.REASONING, reasoning_output)
+        # first try it with the auto enabled reasoning, if the model doesnt support it try it without it
+        for attempt in range(2):
+            try:
+                async for chunk in generator.astream(
+                    {
+                        "context": context_string,
+                        "input": user_prompt,
+                    }
+                ):
+                    reasoning_output = chunk.additional_kwargs.get("reasoning_content")
+                    if reasoning_output:
+                        yield (AIMessageType.REASONING, reasoning_output)
 
-            output_content = chunk.content
-            if output_content:
-                full_answer += str(output_content)
-                yield (AIMessageType.TEXT, output_content)
+                    output_content = chunk.content
+                    if output_content:
+                        full_answer += str(output_content)
+                        yield (AIMessageType.TEXT, output_content)
+
+                    # if the generating is done display generation speed
+                    if chunk.response_metadata and chunk.response_metadata.get("done"):
+                        tokens_per_sec = extract_tokens_per_second(chunk)
+                        if tokens_per_sec:
+                            yield (AIMessageType.TEXT, tokens_per_sec)
+                break
+            except Exception as e:
+                if attempt == 0 and (
+                    "does not support thinking" in str(e).lower()
+                    or "status code: 400" in str(e).lower()
+                ):
+                    print(
+                        "Model does not support thinking, retrying without reasoning..."
+                    )
+                    config.llm = config.build_llm(reasoning=False)
+                    generator = _qa_prompt | config.llm
+                else:
+                    raise e
 
         _chat_history.append(HumanMessage(user_prompt))
         _chat_history.append(AIMessage(full_answer))
@@ -239,6 +260,19 @@ async def generate_message(user_prompt: str):
     except Exception as e:
         print("herere error ")
         print(e)
+
+
+def extract_tokens_per_second(chunk: AIMessage) -> str | None:
+    meta = chunk.response_metadata
+    if meta.get("done"):
+        eval_count = meta.get("eval_count")
+        eval_duration_ns = meta.get("eval_duration")
+        if eval_count and eval_duration_ns:
+            tokens_per_sec = eval_count / (eval_duration_ns / 1e9)
+
+            return f"\n\n*⚡ {tokens_per_sec:.1f} tokens/sec*"
+
+    return None
 
 
 def clear_chat_history():
