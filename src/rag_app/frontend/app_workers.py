@@ -27,23 +27,28 @@ class AppWorkers(App):
         self, user_prompt: str, chat_text_box: ChatText
     ) -> None:
         acc_response = ""
-
+        acc_reasoning = ""
         ai_widget = self.active_ai_widget
-
         if not ai_widget:
             print("No active AI widget")
             raise ValueError("No active AI widget")
 
         last_update_time = 0.0
+        last_reasoning_update_time = 0.0
+        UPDATE_INTERVAL = 0.25
 
         try:
-            # display the text as it is being generated
             async for response in generate_message(user_prompt):
                 response_type, response_content = response
-
                 match response_type:
                     case AIMessageType.REASONING:
-                        ai_widget.update_reasoning_message(str(response_content))
+                        acc_reasoning += str(response_content)
+                        current_time = time.time()
+                        if (
+                            current_time - last_reasoning_update_time
+                        ) > UPDATE_INTERVAL:
+                            ai_widget.update_reasoning_message(acc_reasoning)
+                            last_reasoning_update_time = current_time
 
                     case AIMessageType.TEXT:
                         # append the new generated chunk
@@ -66,9 +71,11 @@ class AppWorkers(App):
 
                 chat_text_box.scroll_end(animate=False)
 
+            if ai_widget and acc_reasoning:
+                ai_widget.update_reasoning_message(acc_reasoning)
             if ai_widget and acc_response:
                 ai_widget.update_text(acc_response)
-                chat_text_box.scroll_end(animate=False)
+            chat_text_box.scroll_end(animate=False)
 
         except asyncio.CancelledError:
             pass
@@ -78,9 +85,9 @@ class AppWorkers(App):
             chat_text_box.add_ollama_error_message()
 
             ai_widget.remove()  # type: ignore
-
-        self.is_working = False
-        self.active_ai_widget = None
+        finally:
+            self.is_working = False
+            self.active_ai_widget = None
 
     # Type
     @work(thread=True)

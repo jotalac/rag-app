@@ -37,10 +37,9 @@ class AIMessage(Horizontal):
         formatted_text = f"**{Role.AI.value}**: \n\n{self.message}"
         self.md_widget_output.update(formatted_text)
 
-    def update_reasoning_message(self, new_chunk: str) -> None:
-        self.reasoning_message += new_chunk
+    def update_reasoning_message(self, full_text: str) -> None:
+        self.reasoning_message = full_text
         if not hasattr(self, "reasoning_label"):
-
             self.reasoning_label = Markdown(
                 self.reasoning_message, classes="collapsible-label reasoning-label"
             )
@@ -52,7 +51,6 @@ class AIMessage(Horizontal):
             )
             self.bubble.mount(collapsible_widget, before=self.md_widget_output)
         else:
-
             self.reasoning_label.update(self.reasoning_message)
 
     def add_collapsible_content(
