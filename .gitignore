@@ -16,3 +16,4 @@ documents*/
 
 .mypy_cache/
 .textual/
+.vscode/
