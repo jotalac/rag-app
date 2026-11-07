@@ -12,6 +12,7 @@ from rag_app.backend.database import (
     save_configs,
 )
 from rag_app.backend.config import config, ConfigKeys
+from rag_app.backend.database.core import delete_db_collection
 
 
 class ConfigModal(ModalScreen):
@@ -185,7 +186,7 @@ class ConfigModal(ModalScreen):
         ] != str(new_old_resources_dir[1]):
 
             self.notify("Deleting all workspace resources", severity="warning")
-            remove_all_resources()
+            delete_db_collection()
 
         self.notify("Config saved successfully", severity="information")
 

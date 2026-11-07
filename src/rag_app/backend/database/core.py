@@ -78,3 +78,6 @@ def clear_record_manager_cache():
     global _cached_record_manager, _cached_workspace_id
     _cached_record_manager = None
     _cached_workspace_id = None
+
+def delete_db_collection():
+    get_vector_db().delete_collection()
