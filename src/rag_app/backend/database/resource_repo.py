@@ -13,10 +13,14 @@ from langchain_core.indexing import index
 from rag_app.backend.config import config
 from rag_app.backend.utils import is_text_file
 from rag_app.backend.database.core import get_vector_db, get_record_manager, _engine
+import rag_app.backend.database.full_text_search_repo as fts
 
 _text_splitter: Final = RecursiveCharacterTextSplitter(
     chunk_size=1500, chunk_overlap=100
 )
+
+def _namespace() -> str:
+    return f"chroma/{config.workspace_id}"
 
 
 def add_resource(filename: str) -> tuple[bool, str]:
@@ -72,6 +76,12 @@ def add_resource(filename: str) -> tuple[bool, str]:
         key_encoder="sha256",
     )
 
+    # add chunks for full-text search
+    keys = get_record_manager().list_keys(group_ids=[str(file_path)])
+    stored = get_vector_db().get(ids=keys, include=["documents"])
+    fts.index_chunks(_namespace(), str(file_path), list(zip(stored["ids"], stored["documents"])))
+    
+
     # print(f"Indexing complete for '{filename}': {indexing_result}")
 
     return (True, f"{len(doc_chunks)} chunks")
@@ -89,6 +99,9 @@ def remove_resource(filename: str) -> bool:
 
     get_vector_db().delete(keys_to_delete)
     rm.delete_keys(keys_to_delete)
+
+    # remote it from fts 
+    fts.delete_by_source(_namespace(), str(file_path))
 
     return True
 
@@ -108,10 +121,8 @@ def remove_resources_dir(subdir_name: str) -> bool:
                      
         """)
 
-        target_namespace = f"chroma/{config.workspace_id}"
-
         result = conn.execute(
-            query, {"target_dir": f"{target_dir}%", "namespace": target_namespace}
+            query, {"target_dir": f"{target_dir}%", "namespace": _namespace()}
         )
 
         keys_to_delete = [row[0] for row in result]
@@ -123,6 +134,9 @@ def remove_resources_dir(subdir_name: str) -> bool:
     get_vector_db().delete(keys_to_delete)
     get_record_manager().delete_keys(keys_to_delete)
 
+    # remove it from fts
+    fts.delete_by_source_prefix(_namespace(), target_dir)
+
     return True
 
 
@@ -130,10 +144,14 @@ def remove_all_resources() -> None:
     rm = get_record_manager()
     all_keys = rm.list_keys()
 
+    # remove from fts
+    fts.delete_namespace(_namespace())
+
     if not all_keys:
         print("Database already empty")
         return
 
+    # remove from chroma vector
     get_vector_db().delete(all_keys)
     rm.delete_keys(all_keys)
 
@@ -146,8 +164,7 @@ def list_all_uploaded_files() -> list[str]:
                  """)
 
     with _engine.connect() as conn:
-        target_namespace = f"chroma/{config.workspace_id}"
-        result = conn.execute(query, {"namespace": target_namespace})
+        result = conn.execute(query, {"namespace": _namespace()})
 
         unique_files = []
         for row in result:

@@ -10,6 +10,7 @@ from rag_app.backend.database.core import (
     workspaces_table,
     clear_record_manager_cache,
 )
+import rag_app.backend.database.full_text_search_repo as fts
 
 
 def get_workspace_info(workspace_name: str) -> tuple[str, uuid.UUID, str, str] | None:
@@ -147,6 +148,9 @@ def delete_workspace(workspace_id: str) -> bool:
                     workspaces_table.c.id == str(workspace_uuid)
                 )
                 conn.execute(del_query)
+
+        # remove from fts
+        fts.delete_namespace(f"chroma/{workspace_id}")
 
         return True
 

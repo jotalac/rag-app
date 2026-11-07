@@ -1,5 +1,5 @@
 from typing import Final
-from sqlalchemy import create_engine, MetaData, Table, Column, String
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, text
 from langchain_community.indexes import _sql_record_manager
 from langchain_chroma import Chroma
 from rag_app.backend.config import config
@@ -26,10 +26,31 @@ workspaces_table = Table(
     Column("embed_model", String, nullable=False),
 )
 
+# table for fts5 full text search 
+chunk_map_table = Table(
+    "chunk_map",
+    metadata,
+    Column("rowid", Integer, primary_key=True, autoincrement=True),
+    Column("chunk_id", String, nullable=False),
+    Column("namespace", String, nullable=False, index=True),
+    Column("source", String, nullable=False, index=True)
+)
+
 metadata.create_all(_engine)
 
 # create the record manager if not exists
 _sql_record_manager.SQLRecordManager(namespace="init", engine=_engine).create_schema()
+
+# create index for FTS (full-text-search)
+with _engine.begin() as conn:
+    conn.execute(text("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+            text,
+            content='',
+            contentless_delete=1,
+            tokenize='unicode61 remove_diacritics 2'
+        )
+    """))
 
 
 def get_vector_db() -> Chroma:
