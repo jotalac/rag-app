@@ -187,6 +187,7 @@ class ConfigModal(ModalScreen):
 
             self.notify("Deleting all workspace resources", severity="warning")
             delete_db_collection()
+            remove_all_resources()
 
         self.notify("Config saved successfully", severity="information")
 

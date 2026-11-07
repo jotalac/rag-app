@@ -133,6 +133,7 @@ class WelcomeMessage(Vertical):
 
 
 class ChatText(VerticalScroll):
+
     def __init__(self, **kwargs):
         super().__init__(id="chat-text", **kwargs)
 
@@ -161,8 +162,12 @@ class ChatText(VerticalScroll):
 
         self.remove_old_messages()
 
+
+    MAX_CHAT_WIDGETS = 30
+
     def remove_old_messages(self):
-        if len(self.children) > 30:
-            self.children[0].remove()
+        to_remove = len(self.children) - self.MAX_CHAT_WIDGETS
+        if to_remove > 0:
+            self.remove_children(self.children[:to_remove])
 
         self.scroll_end(animate=False)
